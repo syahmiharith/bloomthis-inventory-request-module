@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778839200866,
+      "tag": "0000_loud_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778846400000,
+      "tag": "0001_expand_request_workspace",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778853600000,
+      "tag": "0002_add_warehouses",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778940000000,
+      "tag": "0003_route_specific_surfaces",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778947200000,
+      "tag": "0004_add_request_history",
+      "breakpoints": true
+    }
+  ]
+}

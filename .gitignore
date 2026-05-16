@@ -1,0 +1,14 @@
+.next
+node_modules
+.env
+.env.local
+coverage
+dist
+debug.log
+output
+playwright-report
+test-results
+tsconfig.tsbuildinfo
+
+.vercel
+bloomthis-inventory-next
