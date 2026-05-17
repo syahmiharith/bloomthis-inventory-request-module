@@ -25,76 +25,21 @@ export function InventoryItemDetailPanel({
     stockHealthPercent === null ? "-" : `${stockHealthPercent}%`;
 
   return (
-    <div className="panel-detail-stack" data-testid="inventory-detail-panel">
-      <section className="panel">
-        <div className="panel-header stacked-panel-header">
-          <div>
-            <h3>{item.name}</h3>
-            <p>{item.sku}</p>
+    <div
+      className="inventory-detail-sheet"
+      data-testid="inventory-detail-panel"
+    >
+      <section className="inventory-detail-hero" aria-labelledby="item-title">
+        <div className="inventory-detail-hero-top">
+          <div className="inventory-detail-title">
+            <span className="eyebrow">Inventory item</span>
+            <h3 id="item-title">{item.name}</h3>
+            <p className="sku-cell">{item.sku}</p>
           </div>
           <StockBadge status={status} />
         </div>
-        <dl className="details-grid panel-details-grid">
-          <div>
-            <dt>SKU</dt>
-            <dd>{item.sku}</dd>
-          </div>
-          <div>
-            <dt>Category</dt>
-            <dd>{item.category}</dd>
-          </div>
-          <div>
-            <dt>Warehouse</dt>
-            <dd>{item.warehouse}</dd>
-          </div>
-          <div>
-            <dt>Unit</dt>
-            <dd>{item.unit}</dd>
-          </div>
-          <div>
-            <dt>Available stock</dt>
-            <dd>{item.available}</dd>
-          </div>
-          <div>
-            <dt>Stock health</dt>
-            <dd>{stockHealthLabel}</dd>
-          </div>
-          <div>
-            <dt>On hand</dt>
-            <dd>{item.quantityOnHand}</dd>
-          </div>
-          <div>
-            <dt>Reserved</dt>
-            <dd>{item.quantityReserved}</dd>
-          </div>
-          <div>
-            <dt>Active demand</dt>
-            <dd>{item.activeDemand}</dd>
-          </div>
-          <div>
-            <dt>Last updated</dt>
-            <dd>{formatDate(item.updatedAt)}</dd>
-          </div>
-        </dl>
-      </section>
 
-      <section className="panel item-details-panel">
-        <h3>Stock Analytics</h3>
-        <div className="stock-health-grid">
-          <div>
-            <span>Pending requests</span>
-            <strong>{item.pendingRequestCount}</strong>
-          </div>
-          <div>
-            <span>Approved requests</span>
-            <strong>{item.approvedRequestCount}</strong>
-          </div>
-          <div>
-            <span>Risk label</span>
-            <strong>{status}</strong>
-          </div>
-        </div>
-        <div className="stock-health-detail">
+        <div className="inventory-health-summary">
           <span
             aria-label={
               stockHealthPercent === null
@@ -114,49 +59,121 @@ export function InventoryItemDetailPanel({
           >
             <strong>{stockHealthLabel}</strong>
           </span>
-          <p>
-            Health compares available stock with the internal operating target
-            for this item.
-          </p>
+          <div>
+            <span>Available stock</span>
+            <strong>
+              {item.available} {item.unit}
+            </strong>
+            <p>
+              Health compares available stock with the internal operating
+              target.
+            </p>
+          </div>
+        </div>
+
+        <dl className="inventory-detail-meta">
+          <div>
+            <dt>Category</dt>
+            <dd>{item.category}</dd>
+          </div>
+          <div>
+            <dt>Warehouse</dt>
+            <dd>{item.warehouse}</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>{formatDate(item.updatedAt)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="detail-section">
+        <div className="detail-section-header">
+          <div>
+            <h3>Stock analytics</h3>
+            <p>Operational demand and inventory position.</p>
+          </div>
+        </div>
+        <div className="detail-metric-grid">
+          <MetricCard label="On hand" value={item.quantityOnHand} />
+          <MetricCard label="Reserved" value={item.quantityReserved} />
+          <MetricCard label="Active demand" value={item.activeDemand} />
+          <MetricCard label="Pending requests" value={item.pendingRequestCount} />
+          <MetricCard
+            label="Approved requests"
+            value={item.approvedRequestCount}
+          />
+          <MetricCard label="Risk label" value={status} />
         </div>
       </section>
 
-      <section className="panel item-details-panel">
-        <h3>Recent Request Activity</h3>
-        <div className="related-request-list">
+      <section className="detail-section">
+        <div className="detail-section-header">
+          <div>
+            <h3>Recent request activity</h3>
+            <p>Latest requests that include this item.</p>
+          </div>
+        </div>
+        <div className="related-request-list compact-side-list">
           {item.recentRequests.length === 0 ? (
             <p className="muted">No recent requests for this item.</p>
           ) : null}
           {item.recentRequests.map((request) => (
-            <article key={request.id}>
-              <a className="mono-cell" href={`/requests/${request.id}`}>
-                {request.requestCode}
-              </a>
-              <StatusBadge status={request.status} />
-              <span>{request.requesterName}</span>
-              <span>
-                {request.quantityRequested} {request.unit}
-              </span>
+            <article className="compact-detail-card" key={request.id}>
+              <div>
+                <a className="mono-cell" href={`/requests/${request.id}`}>
+                  {request.requestCode}
+                </a>
+                <span>{request.requesterName}</span>
+              </div>
+              <div>
+                <StatusBadge status={request.status} />
+                <strong>
+                  {request.quantityRequested} {request.unit}
+                </strong>
+              </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="panel item-details-panel">
-        <h3>Recent Fulfillment Activity</h3>
-        <div className="item-activity-list">
+      <section className="detail-section">
+        <div className="detail-section-header">
+          <div>
+            <h3>Recent fulfillment activity</h3>
+            <p>Completed movement tied to this item.</p>
+          </div>
+        </div>
+        <div className="item-activity-list compact-side-list">
           {item.recentFulfillments.length === 0 ? (
             <p className="muted">No recent fulfillments for this item.</p>
           ) : null}
           {item.recentFulfillments.map((entry) => (
-            <article key={entry.id}>
-              <strong>{entry.requestCode ?? "Fulfillment"}</strong>
-              <span>{entry.actorName}</span>
+            <article className="compact-detail-card" key={entry.id}>
+              <div>
+                <strong>{entry.requestCode ?? "Fulfillment"}</strong>
+                <span>{entry.actorName}</span>
+              </div>
               <time>{formatDate(entry.createdAt)}</time>
             </article>
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | string;
+}) {
+  return (
+    <div className="detail-metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
