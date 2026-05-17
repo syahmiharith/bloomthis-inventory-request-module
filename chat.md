@@ -2326,6 +2326,7 @@ Checks passed:
 Please export our entire conversation from this chat session into a well-formatted Markdown document.
 
 Format it as follows:
+
 - Title: "AI Chat Log — [today's date]"
 - For each message, label it clearly as either **User** or **Assistant**
 - Preserve all code blocks, lists, and formatting exactly as they appeared
