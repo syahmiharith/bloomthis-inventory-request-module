@@ -1,6 +1,5 @@
 "use client";
 
-import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import type { User } from "@/db/schema";
@@ -34,16 +33,6 @@ export function AppHeader({
   return (
     <header className="app-header" data-testid="app-header">
       <div className="header-title">
-        <button
-          aria-label="Open menu"
-          className="icon-button"
-          onClick={() =>
-            window.dispatchEvent(new Event("toggle-mobile-sidebar"))
-          }
-          type="button"
-        >
-          <Menu />
-        </button>
         <div>
           {meta.breadcrumb ? (
             <span className="breadcrumb">{meta.breadcrumb}</span>

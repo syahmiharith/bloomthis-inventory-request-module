@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { handleRouteError } from "@/lib/http";
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
   try {
     const actor = await requireAdmin();
     const item = await createItem(await request.json(), actor.name);
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/inventory");
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);

@@ -53,7 +53,7 @@ function isActiveRoute(pathname: string, href: string) {
   }
 
   if (href === "/inventory") {
-    return pathname === "/inventory";
+    return pathname === "/inventory" || /^\/inventory\/(?!new$)[^/]+$/.test(pathname);
   }
 
   if (href === "/requests") {

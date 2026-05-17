@@ -11,6 +11,8 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import type { RequestStatus } from "@/lib/constants";
 import { getDashboardPageData } from "@/services/dashboard.service";
+import { ClickableRow } from "@/components/ui/ClickableRow";
+import { KpiCard, KpiGrid } from "@/components/ui/Kpi";
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser();
@@ -34,60 +36,71 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <section
-          className="dashboard-action-grid"
-          data-testid="dashboard-summary-cards"
-        >
+        <KpiGrid testId="dashboard-summary-cards">
           {isAdmin ? (
             <>
-              <SummaryCard
+              <KpiCard
                 icon={<Package />}
                 label="Total Items"
                 value={dashboard.inventory.totalItems}
                 note="Inventory records"
                 tone="blue"
               />
-              <SummaryCard
+              <KpiCard
                 icon={<AlertTriangle />}
                 label="Low Stock"
                 value={dashboard.inventory.lowStockItems}
                 note="At or below threshold"
                 tone="amber"
               />
-              <SummaryCard
+              <KpiCard
                 icon={<ClipboardList />}
                 label="Pending Requests"
                 value={dashboard.requests.pendingRequests}
                 note="Waiting for review"
                 tone="red"
               />
+              <KpiCard
+                icon={<PackageCheck />}
+                label="Fulfilled Requests"
+                value={dashboard.requests.fulfilledRequests}
+                note="Completed requests"
+                tone="green"
+              />
             </>
           ) : (
             <>
-              <SummaryCard
+              <KpiCard
                 icon={<PackageCheck />}
                 label="Available Items"
                 value={dashboard.inventory.availableItems}
                 note="Currently requestable"
                 tone="blue"
               />
-              <SummaryCard
+              <KpiCard
                 icon={<ClipboardList />}
                 label="My Requests"
                 value={dashboard.requests.totalRequests}
                 note={currentUser.name}
                 tone="green"
               />
-              <SummaryCard
+              <KpiCard
                 icon={<AlertTriangle />}
                 label="Pending Requests"
                 value={dashboard.requests.pendingRequests}
                 note="Awaiting admin review"
                 tone="amber"
               />
+              <KpiCard
+                icon={<PackageCheck />}
+                label="Fulfilled Requests"
+                value={dashboard.requests.fulfilledRequests}
+                note="Completed for this user"
+                tone="green"
+              />
             </>
           )}
-        </section>
+        </KpiGrid>
 
         <div className="dashboard-grid refined-dashboard-grid">
           <section className="panel" data-testid="dashboard-recent-requests">
@@ -103,29 +116,37 @@ export default async function HomePage() {
               <p className="empty-state">No requests yet.</p>
             ) : (
               <div className="table-wrap compact dashboard-table">
-                <table>
+                <table className="data-table dashboard-table-content">
                   <thead>
                     <tr>
-                      <th>Request</th>
-                      {isAdmin ? <th>Requester</th> : null}
-                      <th>Items</th>
-                      <th>Qty</th>
-                      <th>Status</th>
-                      <th>Created</th>
+                      <th className="col-code">Request</th>
+                      {isAdmin ? <th className="col-person">Requester</th> : null}
+                      <th className="col-items">Items</th>
+                      <th className="col-number">Qty</th>
+                      <th className="col-status">Status</th>
+                      <th className="col-date hide-md">Created</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dashboard.recentRequests.map((request) => (
-                      <tr key={request.id}>
-                        <td className="mono-cell">{request.requestCode}</td>
-                        {isAdmin ? <td>{request.requesterName}</td> : null}
-                        <td>{request.itemNames}</td>
+                      <ClickableRow href={`/requests/${request.id}`} key={request.id}>
+                        <td className="mono-cell truncate-cell" title={request.requestCode}>
+                          {request.requestCode}
+                        </td>
+                        {isAdmin ? (
+                          <td className="truncate-cell" title={request.requesterName}>
+                            {request.requesterName}
+                          </td>
+                        ) : null}
+                        <td className="truncate-cell" title={request.itemNames}>
+                          {request.itemNames}
+                        </td>
                         <td>{request.quantityRequested}</td>
                         <td>
                           <StatusBadge status={request.status} />
                         </td>
-                        <td>{formatDate(request.createdAt)}</td>
-                      </tr>
+                        <td className="hide-md">{formatDate(request.createdAt)}</td>
+                      </ClickableRow>
                     ))}
                   </tbody>
                 </table>
@@ -192,31 +213,6 @@ export default async function HomePage() {
         </div>
       </section>
     </main>
-  );
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  note,
-  tone,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-  note: string;
-  tone: "blue" | "green" | "amber" | "red";
-}) {
-  return (
-    <article className={`dashboard-action-card tone-${tone}`}>
-      <span>{icon}</span>
-      <div>
-        <h3>{label}</h3>
-        <strong>{value}</strong>
-        <p>{note}</p>
-      </div>
-    </article>
   );
 }
 

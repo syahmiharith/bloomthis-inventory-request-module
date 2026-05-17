@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { handleRouteError } from "@/lib/http";
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
   try {
     const actor = await getCurrentUser();
     const created = await createRequest(await request.json(), actor);
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/requests");
     return NextResponse.json({ request: created }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);

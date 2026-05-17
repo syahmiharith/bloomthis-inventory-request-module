@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { listItems } from "@/services/item.service";
+import { EmptyRequestModal } from "./EmptyRequestModal";
 import { RequestForm } from "./RequestForm";
 
 type NewRequestPageProps = {
@@ -26,21 +27,12 @@ export default async function NewRequestPage({
 
   return (
     <main
-      className="page-scroll main-scroll-region route-page"
+      className="page-scroll main-scroll-region route-page modal-route"
       data-testid="main-scroll-region"
     >
       <section data-testid="new-request-page">
-        <div className="route-heading">
-          <div>
-            <h2>New Request</h2>
-            <p>Submit an inventory request for admin review.</p>
-          </div>
-        </div>
-
         {requestableItems.length === 0 ? (
-          <div className="panel">
-            <p className="empty-state">No inventory items are available yet.</p>
-          </div>
+          <EmptyRequestModal />
         ) : (
           <RequestForm
             initialItemId={params?.itemId}

@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import {
   auditLogs,
@@ -21,11 +22,18 @@ export async function listItems(filters: {
   category?: string;
   lowStock?: boolean;
 }) {
+  return listItemsCached(filters.category ?? "", filters.lowStock ?? false);
+}
+
+const listItemsCached = cache(async function listItemsCached(
+  category: string,
+  lowStock: boolean,
+) {
   const conditions = [];
-  if (filters.category) {
-    conditions.push(eq(inventoryItems.category, filters.category));
+  if (category) {
+    conditions.push(eq(inventoryItems.category, category));
   }
-  if (filters.lowStock) {
+  if (lowStock) {
     conditions.push(
       lte(
         sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
@@ -54,11 +62,24 @@ export async function listItems(filters: {
           item.quantityReserved,
           item.reorderPoint,
         ) !== "In Stock",
-    };
+      };
   });
+});
+
+export async function getItemById(id: string) {
+  return getItemByIdCached(id);
 }
 
+const getItemByIdCached = cache(async function getItemByIdCached(id: string) {
+  const items = await listItems({});
+  return items.find((item) => item.id === id) ?? null;
+});
+
 export async function getStockOverviewData() {
+  return getStockOverviewDataCached();
+}
+
+const getStockOverviewDataCached = cache(async function getStockOverviewDataCached() {
   const items = await listItems({});
   const itemIds = items.map((item) => item.id);
 
@@ -206,7 +227,7 @@ export async function getStockOverviewData() {
       new Set(hydratedItems.map((item) => item.warehouse)),
     ),
   };
-}
+});
 
 export async function createItem(input: unknown, actorName: string) {
   const parsed = createItemSchema.parse(input);

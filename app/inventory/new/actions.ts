@@ -53,6 +53,8 @@ export async function createInventoryItemAction(
     };
   }
 
+  revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath("/inventory");
   redirect("/inventory?success=Inventory item created successfully.");
 }

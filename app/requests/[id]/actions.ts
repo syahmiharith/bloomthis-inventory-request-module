@@ -27,6 +27,9 @@ export async function updateRequestDetailStatusAction(formData: FormData) {
       error instanceof Error ? error.message : "Unable to update request.";
   }
 
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  revalidatePath("/inventory");
   revalidatePath("/requests");
   revalidatePath(`/requests/${requestId}`);
 

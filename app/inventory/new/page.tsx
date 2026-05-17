@@ -6,17 +6,10 @@ export default async function NewInventoryItemPage() {
 
   return (
     <main
-      className="page-scroll main-scroll-region route-page"
+      className="page-scroll main-scroll-region route-page modal-route"
       data-testid="main-scroll-region"
     >
       <section data-testid="new-inventory-item-page">
-        <div className="route-heading">
-          <div>
-            <h2>Add Inventory Item</h2>
-            <p>Create a stock item with a SKU, category, and threshold.</p>
-          </div>
-        </div>
-
         <InventoryItemForm />
       </section>
     </main>

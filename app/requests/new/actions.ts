@@ -59,6 +59,8 @@ export async function createInventoryRequestAction(
     };
   }
 
+  revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath("/requests");
   redirect("/requests?success=Request created successfully.");
 }

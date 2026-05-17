@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import {
   auditLogs,
@@ -33,9 +34,16 @@ export type DashboardSummary = Record<
 export async function getDashboardSummary(
   viewer: User,
 ): Promise<DashboardSummary> {
+  return getDashboardSummaryCached(viewer.id, viewer.role);
+}
+
+const getDashboardSummaryCached = cache(async function getDashboardSummaryCached(
+  viewerId: string,
+  viewerRole: User["role"],
+): Promise<DashboardSummary> {
   const scopeCondition =
-    viewer.role === "employee"
-      ? eq(inventoryRequests.requesterId, viewer.id)
+    viewerRole === "employee"
+      ? eq(inventoryRequests.requesterId, viewerId)
       : undefined;
   const now = new Date();
   const currentWindowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -88,12 +96,19 @@ export async function getDashboardSummary(
   };
 
   return summary;
-}
+});
 
 export async function getDashboardPageData(viewer: User) {
+  return getDashboardPageDataCached(viewer.id, viewer.role);
+}
+
+const getDashboardPageDataCached = cache(async function getDashboardPageDataCached(
+  viewerId: string,
+  viewerRole: User["role"],
+) {
   const requestScope =
-    viewer.role === "employee"
-      ? eq(inventoryRequests.requesterId, viewer.id)
+    viewerRole === "employee"
+      ? eq(inventoryRequests.requesterId, viewerId)
       : undefined;
 
   const [inventoryTotals, requestTotals, recentRequests] = await Promise.all([
@@ -113,6 +128,9 @@ export async function getDashboardPageData(viewer: User) {
         totalRequests: sql<number>`count(*)::int`,
         pendingRequests: sql<number>`count(*) filter (
           where ${inventoryRequests.status} = 'pending'
+        )::int`,
+        fulfilledRequests: sql<number>`count(*) filter (
+          where ${inventoryRequests.status} = 'fulfilled'
         )::int`,
       })
       .from(inventoryRequests)
@@ -152,15 +170,23 @@ export async function getDashboardPageData(viewer: User) {
     requests: {
       totalRequests: requestTotals[0]?.totalRequests ?? 0,
       pendingRequests: requestTotals[0]?.pendingRequests ?? 0,
+      fulfilledRequests: requestTotals[0]?.fulfilledRequests ?? 0,
     },
     recentRequests,
   };
-}
+});
 
 export async function getUrgentDashboard(viewer: User) {
+  return getUrgentDashboardCached(viewer.id, viewer.role);
+}
+
+const getUrgentDashboardCached = cache(async function getUrgentDashboardCached(
+  viewerId: string,
+  viewerRole: User["role"],
+) {
   const scopeCondition =
-    viewer.role === "employee"
-      ? eq(inventoryRequests.requesterId, viewer.id)
+    viewerRole === "employee"
+      ? eq(inventoryRequests.requesterId, viewerId)
       : undefined;
   const now = new Date();
   const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -294,7 +320,7 @@ export async function getUrgentDashboard(viewer: User) {
     inventoryRisk,
     recentActivity,
   };
-}
+});
 
 function calculateTrend(current: number, previous: number) {
   if (previous === 0) {

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { handleRouteError } from "@/lib/http";
@@ -15,6 +16,11 @@ export async function PATCH(
       await request.json(),
       actor.name,
     );
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/inventory");
+    revalidatePath("/requests");
+    revalidatePath(`/requests/${id}`);
     return NextResponse.json({ request: updated });
   } catch (error) {
     return handleRouteError(error);

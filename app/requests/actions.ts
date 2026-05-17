@@ -27,7 +27,11 @@ export async function updateRequestStatusAction(formData: FormData) {
       error instanceof Error ? error.message : "Unable to update request.";
   }
 
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  revalidatePath("/inventory");
   revalidatePath("/requests");
+  revalidatePath(`/requests/${requestId}`);
 
   if (errorMessage) {
     const params = new URLSearchParams({ error: errorMessage });

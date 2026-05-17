@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import {
   inventoryItems,
@@ -22,12 +23,24 @@ export async function listRequests(
   filters: { status?: RequestStatus },
   viewer?: User,
 ) {
+  return listRequestsCached(
+    filters.status ?? "",
+    viewer?.id ?? "",
+    viewer?.role ?? "",
+  );
+}
+
+const listRequestsCached = cache(async function listRequestsCached(
+  status: RequestStatus | "",
+  viewerId: string,
+  viewerRole: User["role"] | "",
+) {
   const conditions = [];
-  if (filters.status) {
-    conditions.push(eq(inventoryRequests.status, filters.status));
+  if (status) {
+    conditions.push(eq(inventoryRequests.status, status));
   }
-  if (viewer?.role === "employee") {
-    conditions.push(eq(inventoryRequests.requesterId, viewer.id));
+  if (viewerRole === "employee") {
+    conditions.push(eq(inventoryRequests.requesterId, viewerId));
   }
 
   const requests = await db
@@ -52,17 +65,30 @@ export async function listRequests(
     .orderBy(desc(inventoryRequests.createdAt));
 
   return Promise.all(requests.map((request) => hydrateRequest(request)));
-}
+});
 
 export async function getRequestById(id: string, viewer?: User) {
-  const [request] = await listRequests({}, viewer).then((rows) =>
-    rows.filter((row) => row.id === id),
+  const request = await getRequestByIdCached(
+    id,
+    viewer?.id ?? "",
+    viewer?.role ?? "",
   );
   if (!request) {
     throw new NotFoundError("Request not found.");
   }
   return request;
 }
+
+const getRequestByIdCached = cache(async function getRequestByIdCached(
+  id: string,
+  viewerId: string,
+  viewerRole: User["role"] | "",
+) {
+  const [request] = await listRequestsCached("", viewerId, viewerRole).then(
+    (rows) => rows.filter((row) => row.id === id),
+  );
+  return request ?? null;
+});
 
 export async function createRequest(input: unknown, actor: User) {
   const parsed = createRequestSchema.parse(input);
