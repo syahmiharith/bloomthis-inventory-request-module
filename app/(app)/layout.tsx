@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { getCurrentUser, getDemoUsers } from "@/lib/auth";
+import { getCurrentUserForShell, getDemoUsersForShell } from "@/lib/auth";
 
 export default async function AppLayout({
   children,
@@ -7,8 +7,8 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const [currentUser, demoUsers] = await Promise.all([
-    getCurrentUser(),
-    getDemoUsers(),
+    getCurrentUserForShell(),
+    getDemoUsersForShell(),
   ]);
 
   return (

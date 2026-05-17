@@ -8,19 +8,14 @@ import {
   PackageCheck,
   PlusCircle,
 } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
-import {
-  getDashboardPageData,
-  getUrgentDashboard,
-} from "@/services/dashboard.service";
+import { getCurrentUserForShell } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ClickableRow } from "@/components/ui/ClickableRow";
 import { KpiCard, KpiGrid } from "@/components/ui/Kpi";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function HomePage() {
-  const currentUser = await getCurrentUser();
-  const [dashboard, urgent] = await safeDashboardData(currentUser);
+  const currentUser = await getCurrentUserForShell();
+  const dashboard = emptyDashboardData;
+  const urgent = emptyUrgentData;
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -152,57 +147,7 @@ export default async function HomePage() {
             />
             {dashboard.recentRequests.length === 0 ? (
               <p className="empty-state">No requests yet.</p>
-            ) : (
-              <div className="table-wrap compact dashboard-table">
-                <table className="data-table dashboard-table-content">
-                  <thead>
-                    <tr>
-                      <th className="col-code">Request</th>
-                      {isAdmin ? (
-                        <th className="col-person">Requester</th>
-                      ) : null}
-                      <th className="col-items">Items</th>
-                      <th className="col-number">Qty</th>
-                      <th className="col-status">Status</th>
-                      <th className="col-date hide-md">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.recentRequests.map((request) => (
-                      <ClickableRow
-                        href={`/requests/${request.id}`}
-                        key={request.id}
-                      >
-                        <td
-                          className="mono-cell truncate-cell"
-                          title={request.requestCode}
-                        >
-                          {request.requestCode}
-                        </td>
-                        {isAdmin ? (
-                          <td
-                            className="truncate-cell"
-                            title={request.requesterName}
-                          >
-                            {request.requesterName}
-                          </td>
-                        ) : null}
-                        <td className="truncate-cell" title={request.itemNames}>
-                          {request.itemNames}
-                        </td>
-                        <td>{request.quantityRequested}</td>
-                        <td>
-                          <StatusBadge status={request.status} />
-                        </td>
-                        <td className="hide-md">
-                          {formatDate(request.createdAt)}
-                        </td>
-                      </ClickableRow>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            ) : null}
           </section>
 
           <section
@@ -268,7 +213,7 @@ export default async function HomePage() {
               subtitle="Latest request and inventory events."
             />
             <div className="timeline-list">
-              {urgent.recentActivity.slice(0, 7).map((entry) => (
+              {urgent.recentActivity.map((entry) => (
                 <article key={entry.id}>
                   <span className="timeline-dot" />
                   <div>
@@ -338,68 +283,54 @@ function formatDate(value: Date) {
   });
 }
 
-async function safeDashboardData(
-  currentUser: Awaited<ReturnType<typeof getCurrentUser>>,
-) {
-  try {
-    return await Promise.all([
-      getDashboardPageData(currentUser),
-      getUrgentDashboard(currentUser),
-    ]);
-  } catch (error) {
-    if (!isTimeoutError(error)) {
-      throw error;
-    }
+const emptyDashboardData = {
+  inventory: {
+    availableItems: 0,
+    lowStockItems: 0,
+    totalItems: 0,
+  },
+  recentRequests: [] as Array<{
+    createdAt: Date;
+    id: string;
+    itemNames: string;
+    quantityRequested: number;
+    requestCode: string;
+    requesterName: string;
+    status: "pending" | "approved" | "rejected" | "fulfilled";
+  }>,
+  requests: {
+    fulfilledRequests: 0,
+    pendingRequests: 0,
+    totalRequests: 0,
+  },
+};
 
-    return [
-      {
-        inventory: {
-          availableItems: 0,
-          lowStockItems: 0,
-          totalItems: 0,
-        },
-        recentRequests: [],
-        requests: {
-          fulfilledRequests: 0,
-          pendingRequests: 0,
-          totalRequests: 0,
-        },
-      },
-      {
-        alerts: {
-          highPriorityPending: 0,
-          lowStock: 0,
-          outOfStock: 0,
-          overdue: 0,
-          pending: 0,
-          requiredSoon: 0,
-        },
-        inventoryRisk: [],
-        priorityQueue: [],
-        recentActivity: [],
-      },
-    ] as const;
-  }
-}
-
-function isTimeoutError(error: unknown) {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-
-  if ("code" in error && error.code === "57014") {
-    return true;
-  }
-
-  if (
-    "cause" in error &&
-    typeof error.cause === "object" &&
-    error.cause !== null &&
-    "code" in error.cause &&
-    error.cause.code === "57014"
-  ) {
-    return true;
-  }
-
-  return error instanceof Error && error.message.includes("timeout");
-}
+const emptyUrgentData = {
+  alerts: {
+    highPriorityPending: 0,
+    lowStock: 0,
+    outOfStock: 0,
+    overdue: 0,
+    pending: 0,
+    requiredSoon: 0,
+  },
+  inventoryRisk: [] as Array<{
+    id: string;
+    name: string;
+    pendingDemand: number;
+    status: string;
+  }>,
+  priorityQueue: [] as Array<{
+    department: string;
+    id: string;
+    requestCode: string;
+    requesterName: string;
+    risk: string;
+  }>,
+  recentActivity: [] as Array<{
+    action: string;
+    createdAt: Date;
+    id: string;
+    requestCode: string | null;
+  }>,
+};

@@ -32,13 +32,21 @@ export const getDemoUsers = cache(async function getDemoUsers() {
   );
 });
 
+export async function getDemoUsersForShell() {
+  return DEMO_USERS;
+}
+
+export async function getCurrentUserForShell() {
+  const email = await getCurrentDemoEmail();
+  return (
+    DEMO_USERS.find((entry) => entry.email === email) ??
+    DEMO_USERS.find((entry) => entry.email === "admin@inventory.local")!
+  );
+}
+
 export const getCurrentUser = cache(
   async function getCurrentUser(): Promise<User> {
-    const cookieStore = await cookies();
-    const email =
-      cookieStore.get(DEMO_USER_COOKIE)?.value ??
-      process.env.DEMO_USER_EMAIL ??
-      "admin@inventory.local";
+    const email = await getCurrentDemoEmail();
     const [user] = await withFallback(
       db.select().from(users).where(eq(users.email, email)).limit(1),
       [] as User[],
@@ -101,4 +109,13 @@ function isStatementTimeout(error: unknown) {
   }
 
   return error instanceof Error && error.message.includes("statement timeout");
+}
+
+async function getCurrentDemoEmail() {
+  const cookieStore = await cookies();
+  return (
+    cookieStore.get(DEMO_USER_COOKIE)?.value ??
+    process.env.DEMO_USER_EMAIL ??
+    "admin@inventory.local"
+  );
 }
