@@ -31,7 +31,12 @@ if (
   );
 }
 
-const client = postgres(connectionString, { prepare: false, max: 4 });
+const client = postgres(connectionString, {
+  connect_timeout: 10,
+  idle_timeout: 20,
+  max: 4,
+  prepare: false,
+});
 
 export const db = drizzle(client, { schema });
 export type DbClient = typeof db;

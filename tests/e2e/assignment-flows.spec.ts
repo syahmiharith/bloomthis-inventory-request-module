@@ -117,6 +117,23 @@ test("insufficient stock blocks fulfillment", async ({ page }) => {
   await expect(page.getByText("Approved").first()).toBeVisible();
 });
 
+test("core routes respond within local performance budget", async ({ page }) => {
+  const routes = ["/", "/inventory", "/requests", "/inventory/new", "/requests/new"];
+
+  for (const route of routes) {
+    const startedAt = Date.now();
+    const response = await page.goto(route, { waitUntil: "domcontentloaded" });
+    const duration = Date.now() - startedAt;
+
+    expect(response?.status(), `${route} should load successfully`).toBeLessThan(
+      500,
+    );
+    expect(duration, `${route} exceeded 10s local route budget`).toBeLessThan(
+      10_000,
+    );
+  }
+});
+
 async function createEmployeeRequest(
   page: import("@playwright/test").Page,
   quantity: number,
@@ -124,6 +141,9 @@ async function createEmployeeRequest(
 ) {
   await switchDemoUser(page, "Evan Employee (employee)");
   await page.goto("/requests/new");
+  await expect(page.getByLabel("Item").first()).toBeEnabled({
+    timeout: 10_000,
+  });
   await page.getByLabel("Quantity").fill(String(quantity));
   await page.getByLabel("Reason").fill(reason);
   await page.getByRole("button", { name: "Submit request" }).click();

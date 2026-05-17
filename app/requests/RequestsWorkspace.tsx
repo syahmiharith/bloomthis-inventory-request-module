@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { User } from "@/db/schema";
 import type { RequestStatus } from "@/lib/constants";
-import { listRequestableItems } from "@/services/item.service";
 import { listRequests } from "@/services/request.service";
 import { RequestCreateModalButton } from "./RequestCreateModalButton";
 
@@ -53,19 +52,16 @@ export async function RequestsWorkspace({
   const query = searchParams.q?.trim().toLowerCase() ?? "";
   const selectedCategory = searchParams.category?.trim() ?? "";
   const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
-  const [requestResult, inventoryItems] = await Promise.all([
-    listRequests(
-      {
-        category: selectedCategory,
-        page: currentPage,
-        pageSize,
-        q: query,
-        status: selectedStatus,
-      },
-      currentUser,
-    ),
-    listRequestableItems(),
-  ]);
+  const requestResult = await listRequests(
+    {
+      category: selectedCategory,
+      page: currentPage,
+      pageSize,
+      q: query,
+      status: selectedStatus,
+    },
+    currentUser,
+  );
   const isAdmin = currentUser.role === "admin";
   const categories = requestResult.categories;
   const pagedRequests = requestResult.rows;
@@ -100,16 +96,7 @@ export async function RequestsWorkspace({
             }
             actions={
               !isAdmin ? (
-                <RequestCreateModalButton
-                  items={inventoryItems.map((item) => ({
-                    id: item.id,
-                    name: item.name,
-                    sku: item.sku,
-                    category: item.category,
-                    available: item.available,
-                  }))}
-                  requesterName={currentUser.name}
-                />
+                <RequestCreateModalButton requesterName={currentUser.name} />
               ) : null
             }
           />
@@ -183,16 +170,7 @@ export async function RequestsWorkspace({
               <EmptyState
                 action={
                   !isAdmin ? (
-                    <RequestCreateModalButton
-                      items={inventoryItems.map((item) => ({
-                        id: item.id,
-                        name: item.name,
-                        sku: item.sku,
-                        category: item.category,
-                        available: item.available,
-                      }))}
-                      requesterName={currentUser.name}
-                    />
+                    <RequestCreateModalButton requesterName={currentUser.name} />
                   ) : null
                 }
               >

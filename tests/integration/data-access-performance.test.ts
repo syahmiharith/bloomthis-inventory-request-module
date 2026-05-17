@@ -7,7 +7,11 @@ import {
   requestHistory,
   users,
 } from "@/db/schema";
-import { getItemById, listItems } from "@/services/item.service";
+import {
+  getItemById,
+  listItems,
+  listRequestableItems,
+} from "@/services/item.service";
 import { getRequestById, listRequests } from "@/services/request.service";
 import { resetDatabase } from "./test-db";
 
@@ -52,6 +56,11 @@ describe("bounded data access", () => {
       .returning();
 
     const firstPage = await listItems({ page: 1, pageSize: 2 });
+    const requestablePage = await listRequestableItems({
+      page: 1,
+      pageSize: 1,
+      q: "PERF",
+    });
     const lowStock = await listItems({ stock: "low" });
     const searched = await listItems({ q: "PERF-PAPER" });
     const detail = await getItemById(ink.id);
@@ -59,6 +68,9 @@ describe("bounded data access", () => {
     expect(firstPage.rows).toHaveLength(2);
     expect(firstPage.totalCount).toBe(3);
     expect(firstPage.pageCount).toBe(2);
+    expect(requestablePage.rows).toHaveLength(1);
+    expect(requestablePage.totalCount).toBe(3);
+    expect(requestablePage.pageCount).toBe(3);
     expect(lowStock.rows.map((item) => item.id)).toEqual([ink.id]);
     expect(searched.rows.map((item) => item.id)).toEqual([paper.id]);
     expect(detail?.id).toBe(ink.id);

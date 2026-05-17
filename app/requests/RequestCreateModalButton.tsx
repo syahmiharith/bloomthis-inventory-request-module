@@ -4,19 +4,9 @@ import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import { RequestForm } from "./new/RequestForm";
 
-type RequestableItem = {
-  id: string;
-  name: string;
-  sku: string;
-  category: string;
-  available: number;
-};
-
 export function RequestCreateModalButton({
-  items,
   requesterName,
 }: {
-  items: RequestableItem[];
   requesterName: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -33,7 +23,6 @@ export function RequestCreateModalButton({
       </button>
       {open ? (
         <RequestForm
-          items={items}
           onClose={() => setOpen(false)}
           requesterName={requesterName}
         />
