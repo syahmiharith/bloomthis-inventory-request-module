@@ -123,7 +123,7 @@ const listRequestsCached = cache(async function listRequestsCached(
   const requestIds = requests.map((request) => request.id);
   const [itemRows, categories] = await Promise.all([
     requestIds.length > 0 ? getRequestItems(requestIds) : Promise.resolve([]),
-    listRequestCategoriesCached(viewerId, viewerRole),
+    safeListRequestCategories(viewerId, viewerRole),
   ]);
   const itemsByRequest = groupRequestItems(itemRows);
 
@@ -493,31 +493,55 @@ function groupRequestItems(
 
 const listRequestCategoriesCached = cache(
   async function listRequestCategoriesCached(
-    viewerId: string,
-    viewerRole: User["role"] | "",
+    _viewerId: string,
+    _viewerRole: User["role"] | "",
   ) {
-    const conditions = [];
-    if (viewerRole === "employee") {
-      conditions.push(eq(inventoryRequests.requesterId, viewerId));
-    }
-
     const rows = await db
       .selectDistinct({ category: inventoryItems.category })
       .from(inventoryItems)
-      .innerJoin(
-        inventoryRequestItems,
-        eq(inventoryRequestItems.itemId, inventoryItems.id),
-      )
-      .innerJoin(
-        inventoryRequests,
-        eq(inventoryRequestItems.requestId, inventoryRequests.id),
-      )
-      .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(asc(inventoryItems.category));
 
     return rows.map((row) => row.category);
   },
 );
+
+async function safeListRequestCategories(
+  viewerId: string,
+  viewerRole: User["role"] | "",
+) {
+  try {
+    return await withTimeout(
+      listRequestCategoriesCached(viewerId, viewerRole),
+      1_500,
+      [],
+    );
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[db:listRequestCategories] failed", error);
+    }
+    return [];
+  }
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  promise.catch(() => undefined);
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeout = setTimeout(() => resolve(fallback), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
 
 function normalizePage(page?: number) {
   return Math.max(1, Number.isFinite(page) ? Math.floor(page ?? 1) : 1);

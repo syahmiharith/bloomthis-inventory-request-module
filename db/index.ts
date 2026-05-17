@@ -32,6 +32,11 @@ if (
 }
 
 const client = postgres(connectionString, {
+  connection: {
+    statement_timeout: 10_000,
+    lock_timeout: 5_000,
+    idle_in_transaction_session_timeout: 10_000,
+  },
   connect_timeout: 10,
   idle_timeout: 20,
   max: 4,
