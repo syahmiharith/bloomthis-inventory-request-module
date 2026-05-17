@@ -14,7 +14,9 @@
     "test:unit": "vitest run tests/unit",
     "test:component": "vitest run tests/component",
     "test:integration": "vitest run tests/integration",
+    "test:e2e": "node tests/e2e/run-e2e.mjs",
     "test:watch": "vitest",
+    "env:check": "node scripts/check-env.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -31,6 +33,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.15.18",

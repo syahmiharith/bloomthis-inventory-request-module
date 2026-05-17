@@ -54,7 +54,7 @@ export async function createInventoryItemAction(
   }
 
   revalidatePath("/inventory");
-  redirect("/inventory");
+  redirect("/inventory?success=Inventory item created successfully.");
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {

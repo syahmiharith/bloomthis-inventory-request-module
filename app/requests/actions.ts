@@ -34,5 +34,8 @@ export async function updateRequestStatusAction(formData: FormData) {
     redirect(`/requests?${params.toString()}`);
   }
 
-  redirect("/requests");
+  const params = new URLSearchParams({
+    success: `Request ${status} successfully.`,
+  });
+  redirect(`/requests?${params.toString()}`);
 }

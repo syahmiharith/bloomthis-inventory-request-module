@@ -1,21 +1,59 @@
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import type { RequestStatus } from "@/lib/constants";
 import { listRequests } from "@/services/request.service";
 import { updateRequestStatusAction } from "./actions";
+import { StatusActionForm } from "./StatusActionForm";
 
 type RequestsPageProps = {
   searchParams?: Promise<{
+    category?: string;
     error?: string;
+    q?: string;
+    status?: string;
+    success?: string;
   }>;
 };
 
-export default async function RequestsPage({ searchParams }: RequestsPageProps) {
+const requestStatuses: RequestStatus[] = [
+  "pending",
+  "approved",
+  "rejected",
+  "fulfilled",
+];
+
+export default async function RequestsPage({
+  searchParams,
+}: RequestsPageProps) {
   const params = (await searchParams) ?? {};
   const currentUser = await getCurrentUser();
-  const requests = await listRequests({}, currentUser);
+  const selectedStatus = requestStatuses.includes(
+    params.status as RequestStatus,
+  )
+    ? (params.status as RequestStatus)
+    : undefined;
+  const query = params.q?.trim().toLowerCase() ?? "";
+  const selectedCategory = params.category?.trim() ?? "";
+  const requests = await listRequests(
+    selectedStatus ? { status: selectedStatus } : {},
+    currentUser,
+  );
   const isAdmin = currentUser.role === "admin";
+  const categories = Array.from(
+    new Set(requests.flatMap((request) => request.items.map((item) => item.itemCategory))),
+  ).sort((left, right) => left.localeCompare(right));
+  const filteredRequests = requests.filter((request) => {
+    const matchesQuery =
+      query.length === 0 ||
+      request.requestCode.toLowerCase().includes(query) ||
+      request.requesterName.toLowerCase().includes(query) ||
+      request.items.some((item) => item.itemName.toLowerCase().includes(query));
+    const matchesCategory =
+      selectedCategory.length === 0 ||
+      request.items.some((item) => item.itemCategory === selectedCategory);
+    return matchesQuery && matchesCategory;
+  });
 
   return (
     <main
@@ -33,20 +71,86 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
             </p>
           </div>
           {!isAdmin ? (
-            <Link className="button button-primary actions" href="/requests/new">
+            <Link
+              className="button button-primary actions"
+              href="/requests/new"
+            >
               <PlusCircle size={16} />
               Create Request
             </Link>
           ) : null}
         </div>
 
+        {params.success ? (
+          <p aria-live="polite" className="alert alert-success">
+            {params.success}
+          </p>
+        ) : null}
+
         {params.error ? (
-          <p className="alert alert-error">{params.error}</p>
+          <p aria-live="polite" className="alert alert-error">
+            {params.error}
+          </p>
         ) : null}
 
         <section className="panel">
-          {requests.length === 0 ? (
-            <p className="empty-state">No requests found.</p>
+          <form action="/requests" className="stock-toolbar">
+            <label className="search-field">
+              <span className="sr-only">Search requests</span>
+              <Search />
+              <input
+                className="input"
+                defaultValue={params.q ?? ""}
+                name="q"
+                placeholder="Search code, requester, or item"
+                type="search"
+              />
+            </label>
+            <label className="filter-select">
+              <span>Status</span>
+              <select defaultValue={selectedStatus ?? ""} name="status">
+                <option value="">All statuses</option>
+                {requestStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {capitalize(status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="filter-select">
+              <span>Category</span>
+              <select defaultValue={selectedCategory} name="category">
+                <option value="">All categories</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="button button-secondary" type="submit">
+              Filter
+            </button>
+            {query || selectedStatus || selectedCategory ? (
+              <Link className="clear-filter-link" href="/requests">
+                Clear filters
+              </Link>
+            ) : null}
+          </form>
+
+          {filteredRequests.length === 0 ? (
+            <div className="empty-state-card">
+              <p>
+                {isAdmin
+                  ? "No employee requests match this view. New employee requests will appear here."
+                  : "You have no demo-user requests in this view."}
+              </p>
+              {!isAdmin ? (
+                <Link className="button button-primary" href="/requests/new">
+                  Create Request
+                </Link>
+              ) : null}
+            </div>
           ) : (
             <div className="table-wrap compact">
               <table>
@@ -63,7 +167,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map((request) => {
+                  {filteredRequests.map((request) => {
                     const totalQuantity = request.items.reduce(
                       (sum, item) => sum + item.requestedQuantity,
                       0,
@@ -74,13 +178,23 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
                         (item) =>
                           item.availableQuantity >= item.requestedQuantity,
                       );
+                    const fulfillPreview = request.items
+                      .map(
+                        (item) =>
+                          `${item.itemName}: ${item.availableQuantity} -> ${
+                            item.availableQuantity - item.requestedQuantity
+                          }`,
+                      )
+                      .join("\n");
 
                     return (
                       <tr key={request.id}>
                         <td className="mono-cell">{request.requestCode}</td>
                         {isAdmin ? <td>{request.requesterName}</td> : null}
                         <td>
-                          {request.items.map((item) => item.itemName).join(", ")}
+                          {request.items
+                            .map((item) => item.itemName)
+                            .join(", ")}
                         </td>
                         <td className="numeric-cell">{totalQuantity}</td>
                         <td>
@@ -106,6 +220,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
                             {isAdmin ? (
                               <AdminRequestActions
                                 canFulfill={canFulfill}
+                                fulfillPreview={fulfillPreview}
                                 requestId={request.id}
                                 status={request.status}
                               />
@@ -127,19 +242,26 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
 
 function AdminRequestActions({
   canFulfill,
+  fulfillPreview,
   requestId,
   status,
 }: {
   canFulfill: boolean;
+  fulfillPreview: string;
   requestId: string;
   status: RequestStatus;
 }) {
   if (status === "pending") {
     return (
       <>
-        <StatusForm requestId={requestId} status="approved" label="Approve" />
-        <StatusForm
-          adminComment="Rejected from request list."
+        <StatusActionForm
+          action={updateRequestStatusAction}
+          requestId={requestId}
+          status="approved"
+          label="Approve"
+        />
+        <StatusActionForm
+          action={updateRequestStatusAction}
           requestId={requestId}
           status="rejected"
           label="Reject"
@@ -151,8 +273,11 @@ function AdminRequestActions({
 
   if (status === "approved") {
     return (
-      <StatusForm
+      <StatusActionForm
+        action={updateRequestStatusAction}
         disabled={!canFulfill}
+        disabledReason="Insufficient stock for fulfillment."
+        fulfillPreview={fulfillPreview}
         requestId={requestId}
         status="fulfilled"
         label="Fulfill"
@@ -161,39 +286,6 @@ function AdminRequestActions({
   }
 
   return null;
-}
-
-function StatusForm({
-  adminComment,
-  disabled = false,
-  label,
-  requestId,
-  status,
-  variant = "secondary",
-}: {
-  adminComment?: string;
-  disabled?: boolean;
-  label: string;
-  requestId: string;
-  status: RequestStatus;
-  variant?: "secondary" | "danger";
-}) {
-  return (
-    <form action={updateRequestStatusAction}>
-      <input name="requestId" type="hidden" value={requestId} />
-      <input name="status" type="hidden" value={status} />
-      {adminComment ? (
-        <input name="adminComment" type="hidden" value={adminComment} />
-      ) : null}
-      <button
-        className={`button button-${variant}`}
-        disabled={disabled}
-        type="submit"
-      >
-        {label}
-      </button>
-    </form>
-  );
 }
 
 function StatusBadge({ status }: { status: RequestStatus }) {

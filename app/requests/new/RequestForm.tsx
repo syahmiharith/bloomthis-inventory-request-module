@@ -26,9 +26,10 @@ export function RequestForm({
   items: RequestableItem[];
   requesterName: string;
 }) {
-  const firstItemId = initialItemId && items.some((item) => item.id === initialItemId)
-    ? initialItemId
-    : (items[0]?.id ?? "");
+  const firstItemId =
+    initialItemId && items.some((item) => item.id === initialItemId)
+      ? initialItemId
+      : (items[0]?.id ?? "");
   const [selectedItemId, setSelectedItemId] = useState(firstItemId);
   const [quantity, setQuantity] = useState(1);
   const [state, formAction, pending] = useActionState(
@@ -45,13 +46,16 @@ export function RequestForm({
   return (
     <form action={formAction} className="panel form-panel">
       {state.message ? (
-        <p className="form-message error">{state.message}</p>
+        <p aria-live="polite" className="form-message error">
+          {state.message}
+        </p>
       ) : null}
 
       <div className="form-grid two-column-form">
         <label className="field">
           <span>Requester name</span>
           <input
+            aria-invalid={Boolean(state.errors?.requesterName)}
             className="input"
             defaultValue={requesterName}
             name="requesterName"
@@ -64,6 +68,7 @@ export function RequestForm({
         <label className="field">
           <span>Item</span>
           <select
+            aria-invalid={Boolean(state.errors?.["items.0.itemId"])}
             className="input"
             name="itemId"
             onChange={(event) => setSelectedItemId(event.target.value)}
@@ -72,7 +77,8 @@ export function RequestForm({
           >
             {items.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name} ({item.sku})
+                {item.name} ({item.sku}) - {item.available} available
+                {item.available <= 0 ? " - Out of stock" : ""}
               </option>
             ))}
           </select>
@@ -82,13 +88,16 @@ export function RequestForm({
         <div className="field">
           <span>Available stock</span>
           <div className="input read-only-field">
-            {selectedItem ? `${selectedItem.available} available` : "No item selected"}
+            {selectedItem
+              ? `${selectedItem.available} available`
+              : "No item selected"}
           </div>
         </div>
 
         <label className="field">
           <span>Quantity</span>
           <input
+            aria-invalid={Boolean(state.errors?.["items.0.quantityRequested"])}
             className="input"
             min="1"
             name="quantityRequested"
@@ -103,7 +112,7 @@ export function RequestForm({
       </div>
 
       {exceedsStock ? (
-        <p className="alert alert-info">
+        <p aria-live="polite" className="alert alert-info">
           Requested quantity exceeds current stock. The request can still be
           submitted, but fulfillment will be blocked until enough stock exists.
         </p>
@@ -111,7 +120,12 @@ export function RequestForm({
 
       <label className="field">
         <span>Reason</span>
-        <textarea className="input textarea" name="reason" required />
+        <textarea
+          aria-invalid={Boolean(state.errors?.reason)}
+          className="input textarea"
+          name="reason"
+          required
+        />
         <FieldError message={state.errors?.reason} />
       </label>
 

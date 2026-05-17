@@ -47,6 +47,22 @@ const navItems = [
   },
 ];
 
+function isActiveRoute(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/" || pathname === "/dashboard";
+  }
+
+  if (href === "/inventory") {
+    return pathname === "/inventory";
+  }
+
+  if (href === "/requests") {
+    return pathname === "/requests" || /^\/requests\/[^/]+$/.test(pathname);
+  }
+
+  return pathname === href;
+}
+
 export function AppSidebar({ currentUser }: { currentUser: User }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -130,10 +146,7 @@ export function AppSidebar({ currentUser }: { currentUser: User }) {
         >
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
-            const active =
-              item.href === "/"
-                ? pathname === "/" || pathname === "/dashboard"
-                : pathname === item.href || pathname.startsWith(item.href);
+            const active = isActiveRoute(pathname, item.href);
 
             return (
               <Link
@@ -147,9 +160,11 @@ export function AppSidebar({ currentUser }: { currentUser: User }) {
                 onClick={() => setMobileOpen(false)}
                 title={item.label}
               >
-                <Icon data-testid={`sidebar-nav-icon-${item.label
-                  .toLowerCase()
-                  .replaceAll(" ", "-")}`} />
+                <Icon
+                  data-testid={`sidebar-nav-icon-${item.label
+                    .toLowerCase()
+                    .replaceAll(" ", "-")}`}
+                />
                 {!collapsed ? <span>{item.label}</span> : null}
               </Link>
             );

@@ -350,7 +350,8 @@ async function seed() {
         ...Array.from({ length: 12 }, (_, historyIndex) => ({
           requestId: request.id,
           actorName: historyIndex % 2 === 0 ? admin.name : "System",
-          actorRole: historyIndex % 2 === 0 ? ("Admin" as const) : ("System" as const),
+          actorRole:
+            historyIndex % 2 === 0 ? ("Admin" as const) : ("System" as const),
           action:
             historyIndex % 2 === 0
               ? "comment_added"

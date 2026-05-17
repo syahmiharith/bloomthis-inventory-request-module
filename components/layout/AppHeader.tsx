@@ -1,8 +1,8 @@
 "use client";
 
-import { Bell, ChevronDown, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { User } from "@/db/schema";
 import { DemoUserSwitcher } from "@/components/ui/DemoUserSwitcher";
 
@@ -24,24 +24,12 @@ export function AppHeader({
   demoUsers: User[];
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const meta = useMemo(
     () =>
       pageMeta.find((entry) => pathname.startsWith(entry.prefix)) ??
       pageMeta[0],
     [pathname],
   );
-
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, []);
 
   return (
     <header className="app-header" data-testid="app-header">
@@ -69,42 +57,9 @@ export function AppHeader({
           initialUsers={demoUsers}
           initialCurrentUser={currentUser}
         />
-        <button
-          aria-label="Notifications"
-          className="icon-button notification-button"
-          type="button"
-        >
-          <Bell />
-          <span>3</span>
-        </button>
-        <div className="profile-menu" ref={menuRef}>
-          <button
-            aria-expanded={open}
-            aria-haspopup="menu"
-            aria-label="Open profile menu"
-            className="profile-avatar-button"
-            data-testid="profile-avatar-button"
-            onClick={() => setOpen((value) => !value)}
-            type="button"
-          >
-            {initials(currentUser.name)}
-            <ChevronDown />
-          </button>
-          {open ? (
-            <div
-              className="profile-dropdown"
-              data-testid="profile-dropdown"
-              role="menu"
-            >
-              <strong>{currentUser.name}</strong>
-              <span>{currentUser.email}</span>
-              <span>
-                {currentUser.role === "admin" ? "Operations Admin" : "Employee"}
-              </span>
-              <button type="button">Profile</button>
-              <button type="button">Sign out</button>
-            </div>
-          ) : null}
+        <div className="viewer-chip" data-testid="profile-summary">
+          <strong>{initials(currentUser.name)}</strong>
+          <span>{currentUser.role === "admin" ? "Admin" : "Employee"}</span>
         </div>
       </div>
     </header>

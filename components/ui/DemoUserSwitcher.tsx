@@ -33,7 +33,7 @@ export function DemoUserSwitcher({
 
   return (
     <label className="actions">
-      <span className="muted">Role</span>
+      <span className="muted">Viewing as</span>
       <Select
         value={currentEmail}
         onChange={(event) => void handleChange(event.target.value)}

@@ -8,6 +8,7 @@ type InventoryPageProps = {
   searchParams?: Promise<{
     q?: string;
     category?: string;
+    success?: string;
   }>;
 };
 
@@ -48,12 +49,21 @@ export default async function InventoryPage({
             </p>
           </div>
           {isAdmin ? (
-            <Link className="button button-primary actions" href="/inventory/new">
+            <Link
+              className="button button-primary actions"
+              href="/inventory/new"
+            >
               <PlusCircle size={16} />
               Add Item
             </Link>
           ) : null}
         </div>
+
+        {params.success ? (
+          <p aria-live="polite" className="alert alert-success">
+            {params.success}
+          </p>
+        ) : null}
 
         <section className="panel inventory-control-panel">
           <form className="stock-toolbar" action="/inventory">
@@ -83,14 +93,21 @@ export default async function InventoryPage({
               Filter
             </button>
             {query || selectedCategory ? (
-              <Link className="button button-secondary" href="/inventory">
-                Clear
+              <Link className="clear-filter-link" href="/inventory">
+                Clear filters
               </Link>
             ) : null}
           </form>
 
           {filteredItems.length === 0 ? (
-            <p className="empty-state">No inventory items match this view.</p>
+            <div className="empty-state-card">
+              <p>No inventory items match this view.</p>
+              {isAdmin ? (
+                <Link className="button button-primary" href="/inventory/new">
+                  Add Inventory Item
+                </Link>
+              ) : null}
+            </div>
           ) : (
             <div className="table-wrap stock-table-wrap">
               <table>
@@ -129,7 +146,9 @@ export default async function InventoryPage({
                             <span className="muted"> {item.sku}</span>
                           ) : null}
                         </td>
-                        {isAdmin ? <td className="mono-cell">{item.sku}</td> : null}
+                        {isAdmin ? (
+                          <td className="mono-cell">{item.sku}</td>
+                        ) : null}
                         <td>{item.category}</td>
                         <td className="numeric-cell">{item.available}</td>
                         {isAdmin ? (

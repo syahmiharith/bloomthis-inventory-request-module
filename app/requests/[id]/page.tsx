@@ -4,11 +4,12 @@ import type { RequestStatus } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/auth";
 import { NotFoundError } from "@/lib/errors";
 import { getRequestById } from "@/services/request.service";
+import { StatusActionForm } from "../StatusActionForm";
 import { updateRequestDetailStatusAction } from "./actions";
 
 type RequestDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; success?: string }>;
 };
 
 export default async function RequestDetailPage({
@@ -26,6 +27,19 @@ export default async function RequestDetailPage({
     (sum, item) => sum + item.requestedQuantity,
     0,
   );
+  const canFulfill =
+    request.status === "approved" &&
+    request.items.every(
+      (item) => item.availableQuantity >= item.requestedQuantity,
+    );
+  const fulfillPreview = request.items
+    .map(
+      (item) =>
+        `${item.itemName}: ${item.availableQuantity} -> ${
+          item.availableQuantity - item.requestedQuantity
+        }`,
+    )
+    .join("\n");
 
   return (
     <main
@@ -43,7 +57,17 @@ export default async function RequestDetailPage({
           </Link>
         </div>
 
-        {query?.error ? <p className="alert alert-error">{query.error}</p> : null}
+        {query?.success ? (
+          <p aria-live="polite" className="alert alert-success">
+            {query.success}
+          </p>
+        ) : null}
+
+        {query?.error ? (
+          <p aria-live="polite" className="alert alert-error">
+            {query.error}
+          </p>
+        ) : null}
 
         <div className="dashboard-grid refined-dashboard-grid">
           <section className="panel">
@@ -101,14 +125,25 @@ export default async function RequestDetailPage({
                 </thead>
                 <tbody>
                   {request.items.map((item) => {
-                    const after = item.availableQuantity - item.requestedQuantity;
+                    const after =
+                      item.availableQuantity - item.requestedQuantity;
                     return (
                       <tr key={item.id}>
                         <td>{item.itemName}</td>
-                        <td className="numeric-cell">{item.availableQuantity}</td>
-                        <td className="numeric-cell">{item.requestedQuantity}</td>
                         <td className="numeric-cell">
-                          {after >= 0 ? after : "Insufficient stock"}
+                          {item.availableQuantity}
+                        </td>
+                        <td className="numeric-cell">
+                          {item.requestedQuantity}
+                        </td>
+                        <td className="numeric-cell">
+                          {after >= 0 ? (
+                            after
+                          ) : (
+                            <span className="badge badge-red">
+                              Insufficient stock
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -155,7 +190,18 @@ export default async function RequestDetailPage({
                 </div>
               </div>
               <div className="admin-controls">
-                <AdminActions requestId={request.id} status={request.status} />
+                <AdminActions
+                  canFulfill={canFulfill}
+                  fulfillPreview={fulfillPreview}
+                  requestId={request.id}
+                  status={request.status}
+                />
+                {request.status === "approved" && !canFulfill ? (
+                  <p className="alert alert-error">
+                    Fulfillment is disabled because one or more requested items
+                    do not have enough available stock.
+                  </p>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -180,9 +226,13 @@ async function getRequestOrNotFound(
 }
 
 function AdminActions({
+  canFulfill,
+  fulfillPreview,
   requestId,
   status,
 }: {
+  canFulfill: boolean;
+  fulfillPreview: string;
   requestId: string;
   status: RequestStatus;
 }) {
@@ -191,7 +241,6 @@ function AdminActions({
       <div className="button-row">
         <StatusForm requestId={requestId} status="approved" label="Approve" />
         <StatusForm
-          adminComment="Rejected from request detail."
           requestId={requestId}
           status="rejected"
           label="Reject"
@@ -203,7 +252,14 @@ function AdminActions({
 
   if (status === "approved") {
     return (
-      <StatusForm requestId={requestId} status="fulfilled" label="Fulfill" />
+      <StatusForm
+        disabled={!canFulfill}
+        disabledReason="Insufficient stock for fulfillment."
+        fulfillPreview={fulfillPreview}
+        requestId={requestId}
+        status="fulfilled"
+        label="Fulfill"
+      />
     );
   }
 
@@ -211,29 +267,33 @@ function AdminActions({
 }
 
 function StatusForm({
-  adminComment,
+  disabled = false,
+  disabledReason,
+  fulfillPreview,
   label,
   requestId,
   status,
   variant = "secondary",
 }: {
-  adminComment?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+  fulfillPreview?: string;
   label: string;
   requestId: string;
   status: RequestStatus;
   variant?: "secondary" | "danger";
 }) {
   return (
-    <form action={updateRequestDetailStatusAction}>
-      <input name="requestId" type="hidden" value={requestId} />
-      <input name="status" type="hidden" value={status} />
-      {adminComment ? (
-        <input name="adminComment" type="hidden" value={adminComment} />
-      ) : null}
-      <button className={`button button-${variant}`} type="submit">
-        {label}
-      </button>
-    </form>
+    <StatusActionForm
+      action={updateRequestDetailStatusAction}
+      disabled={disabled}
+      disabledReason={disabledReason}
+      fulfillPreview={fulfillPreview}
+      label={label}
+      requestId={requestId}
+      status={status}
+      variant={variant}
+    />
   );
 }
 

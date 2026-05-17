@@ -11,6 +11,7 @@ describe("inventory helpers", () => {
   it("derives availability and stock status consistently", () => {
     expect(availableQuantity(120, 6)).toBe(114);
     expect(stockStatusFromQuantities(0, 0, 10)).toBe("Out of Stock");
+    expect(stockStatusFromQuantities(5, 0, 5)).toBe("Low Stock");
     expect(stockStatusFromQuantities(8, 1, 10)).toBe("Low Stock");
     expect(stockStatusFromQuantities(120, 6, 15)).toBe("In Stock");
   });

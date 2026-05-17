@@ -222,6 +222,26 @@ async function fulfillRequest(
     .where(eq(inventoryRequestItems.requestId, request.id));
 
   return db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(inventoryRequests)
+      .set({
+        status: "fulfilled",
+        fulfilledAt: new Date(),
+        adminComment: parsed.adminComment ?? request.adminComment,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(inventoryRequests.id, request.id),
+          eq(inventoryRequests.status, "approved"),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      throw new DomainError("Only approved requests can be fulfilled.");
+    }
+
     for (const line of lines) {
       const quantityToFulfill = line.quantityApproved ?? line.quantityRequested;
       const [stockUpdate] = await tx
@@ -244,17 +264,6 @@ async function fulfillRequest(
         );
       }
     }
-
-    const [updated] = await tx
-      .update(inventoryRequests)
-      .set({
-        status: "fulfilled",
-        fulfilledAt: new Date(),
-        adminComment: parsed.adminComment ?? request.adminComment,
-        updatedAt: new Date(),
-      })
-      .where(eq(inventoryRequests.id, request.id))
-      .returning();
 
     await createAuditLog(tx, {
       requestId: request.id,
@@ -293,6 +302,7 @@ async function hydrateRequest(request: {
         itemId: inventoryRequestItems.itemId,
         itemName: inventoryItems.name,
         itemSku: inventoryItems.sku,
+        itemCategory: inventoryItems.category,
         availableQuantity: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
         requestedQuantity: inventoryRequestItems.quantityRequested,
         approvedQuantity: inventoryRequestItems.quantityApproved,

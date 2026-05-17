@@ -33,7 +33,9 @@ export async function createInventoryRequestAction(
         items: [
           {
             itemId: formData.get("itemId"),
-            quantityRequested: numberFromForm(formData.get("quantityRequested")),
+            quantityRequested: numberFromForm(
+              formData.get("quantityRequested"),
+            ),
           },
         ],
       },
@@ -58,7 +60,7 @@ export async function createInventoryRequestAction(
   }
 
   revalidatePath("/requests");
-  redirect("/requests");
+  redirect("/requests?success=Request created successfully.");
 }
 
 function numberFromForm(value: FormDataEntryValue | null) {

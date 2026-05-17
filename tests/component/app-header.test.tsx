@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AppHeader } from "@/components/layout/AppHeader";
 
@@ -20,15 +20,10 @@ const users = [
 ];
 
 describe("AppHeader", () => {
-  it("shows an avatar button and opens a profile dropdown", () => {
+  it("shows the demo user switcher and current viewer summary", () => {
     render(<AppHeader currentUser={users[0]} demoUsers={users} />);
-    expect(screen.getByTestId("profile-avatar-button")).toHaveTextContent("AA");
-    fireEvent.click(screen.getByTestId("profile-avatar-button"));
-    expect(screen.getByTestId("profile-dropdown")).toHaveTextContent(
-      "Aisha Admin",
-    );
-    expect(screen.getByTestId("profile-dropdown")).toHaveTextContent(
-      "Operations Admin",
-    );
+    expect(screen.getByText("Viewing as")).toBeVisible();
+    expect(screen.getByTestId("profile-summary")).toHaveTextContent("AA");
+    expect(screen.getByTestId("profile-summary")).toHaveTextContent("Admin");
   });
 });
