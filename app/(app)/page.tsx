@@ -47,12 +47,13 @@ export default async function HomePage() {
       { data: emptyDashboardData.recentRequests, stale: false },
     ),
   ]);
+  const kpiData = normalizeDashboardKpis(kpis.data.data);
   const dashboard = {
-    inventory: kpis.data.data.inventory,
-    recentRequests: recent.data.data,
-    requests: kpis.data.data.requests,
+    inventory: kpiData.inventory,
+    recentRequests: recent.data.data ?? [],
+    requests: kpiData.requests,
   };
-  const urgent = priority.data.data;
+  const urgent = normalizeUrgentData(priority.data.data);
   const hasDashboardDataIssue =
     !kpis.available || !priority.available || !recent.available;
   const hasStaleDashboardData =
@@ -833,6 +834,24 @@ const emptyDashboardData = {
   },
 };
 
+function normalizeDashboardKpis(
+  data: Partial<typeof emptyDashboardData> & {
+    inventory?: Partial<typeof emptyDashboardData.inventory>;
+    requests?: Partial<typeof emptyDashboardData.requests>;
+  },
+) {
+  return {
+    inventory: {
+      ...emptyDashboardData.inventory,
+      ...(data.inventory ?? {}),
+    },
+    requests: {
+      ...emptyDashboardData.requests,
+      ...(data.requests ?? {}),
+    },
+  };
+}
+
 const emptyUrgentData = {
   alerts: {
     approvedWaiting: 0,
@@ -877,6 +896,23 @@ const emptyUrgentData = {
     warehouse: string;
   }>,
 };
+
+function normalizeUrgentData(
+  data: Partial<typeof emptyUrgentData> & {
+    alerts?: Partial<typeof emptyUrgentData.alerts>;
+  },
+) {
+  return {
+    alerts: {
+      ...emptyUrgentData.alerts,
+      ...(data.alerts ?? {}),
+    },
+    inventoryRisk: data.inventoryRisk ?? [],
+    priorityQueue: data.priorityQueue ?? [],
+    recentActivity: data.recentActivity ?? [],
+    restockRecommendations: data.restockRecommendations ?? [],
+  };
+}
 
 async function safeDashboardSection<T>(
   label: "dashboard:kpis" | "dashboard:priority" | "dashboard:recent",

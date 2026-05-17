@@ -57,6 +57,7 @@ const lastGoodUrgentDashboard = new Map<
   string,
   Awaited<ReturnType<typeof getUrgentDashboardRaw>>
 >();
+const DASHBOARD_CACHE_VERSION = "v2";
 
 export async function getDashboardSummary(
   viewer: User,
@@ -144,7 +145,7 @@ export async function getCachedDashboardPageData(
   try {
     const data = await cachedRead(
       async () => getDashboardPageDataRaw(viewer.id, viewer.role),
-      [`dashboard:${scope}:page`],
+      [`dashboard:${scope}:page:${DASHBOARD_CACHE_VERSION}`],
       { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
     )();
     lastGoodDashboardData.set(scope, data);
@@ -173,7 +174,7 @@ export async function getCachedDashboardKpis(
         ]);
         return { inventory, requests };
       },
-      [`dashboard:${scope}:kpis`],
+      [`dashboard:${scope}:kpis:${DASHBOARD_CACHE_VERSION}`],
       { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
     )();
     lastGoodDashboardKpis.set(scope, data);
@@ -194,7 +195,7 @@ export async function getCachedDashboardRecentRequests(
   try {
     const data = await cachedRead(
       async () => getDashboardRecentRequestsCached(viewer.id, viewer.role),
-      [`dashboard:${scope}:recent`],
+      [`dashboard:${scope}:recent:${DASHBOARD_CACHE_VERSION}`],
       { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
     )();
     lastGoodDashboardRecent.set(scope, data);
@@ -358,7 +359,7 @@ export async function getCachedUrgentDashboard(
   try {
     const data = await cachedRead(
       async () => getUrgentDashboardRaw(viewer.id, viewer.role),
-      [`dashboard:${scope}:urgent`],
+      [`dashboard:${scope}:urgent:${DASHBOARD_CACHE_VERSION}`],
       { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
     )();
     lastGoodUrgentDashboard.set(scope, data);
