@@ -87,11 +87,11 @@ export default async function HomePage() {
         data-testid="dashboard-page"
       >
         <PageHeader
-          title={isAdmin ? "Operations Cockpit" : "My Request Cockpit"}
+          title={isAdmin ? "Operations Dashboard" : "Request Dashboard"}
           description={
             isAdmin
-              ? "Act on requests, SLA risk, and stock pressure before they slow teams down."
-              : "Track your open requests and quickly request inventory again."
+              ? "Review request workload, SLA exposure, and inventory risk from one operational view."
+              : "Monitor request progress and submit inventory needs from one workspace."
           }
         />
         {hasDashboardDataIssue ? (
@@ -128,7 +128,7 @@ export default async function HomePage() {
                 icon={<ClipboardList />}
                 label="Blocked Requests"
                 value={dashboard.requests.blockedFulfillment}
-                note="Approved but short on stock"
+                note="Approved requests with insufficient stock"
                 tone="red"
               />
               <KpiCard
@@ -145,7 +145,7 @@ export default async function HomePage() {
               <KpiCard
                 footerHref="/requests"
                 icon={<ClipboardList />}
-                label="My Open Requests"
+                label="Open Requests"
                 value={openRequests}
                 note={`${dashboard.requests.approvedRequests} approved`}
                 tone="amber"
@@ -161,7 +161,7 @@ export default async function HomePage() {
               <KpiCard
                 footerHref="/requests?status=fulfilled"
                 icon={<PackageCheck />}
-                label="My Fulfilled Requests"
+                label="Fulfilled Requests"
                 value={dashboard.requests.fulfilledRequests}
                 note="Completed requests"
                 tone="green"
@@ -170,7 +170,7 @@ export default async function HomePage() {
                 footerHref="/requests/new"
                 icon={<PlusCircle />}
                 label="Create Request"
-                value="New"
+                value="Start"
                 note={`${dashboard.inventory.availableItems} items available`}
                 tone="blue"
               />
@@ -184,8 +184,8 @@ export default async function HomePage() {
               title="Today's Action Queue"
               subtitle={
                 isAdmin
-                  ? "Highest-value actions ranked by SLA, stock, and fulfillment risk."
-                  : "Your requests that need attention or are moving through fulfillment."
+                  ? "Prioritized actions ranked by SLA, stock, and fulfillment risk."
+                  : "Requests requiring attention or currently moving through fulfillment."
               }
             />
             {actionEntries.length === 0 ? (
@@ -193,8 +193,8 @@ export default async function HomePage() {
                 href={isAdmin ? "/inventory?stock=low" : "/requests/new"}
                 label={
                   isAdmin
-                    ? "No priority actions right now. Review low-stock items"
-                    : "No active blockers. Create a new request"
+                    ? "No priority actions at this time. Review low-stock inventory"
+                    : "No pending action required. Create a new request"
                 }
               />
             ) : (
@@ -216,13 +216,13 @@ export default async function HomePage() {
             data-testid="dashboard-sla-aging"
           >
             <PanelHeading
-              title={isAdmin ? "SLA & Aging" : "My Request Aging"}
-              subtitle="Review delays, fulfillment wait, and due-soon work."
+              title={isAdmin ? "SLA and Aging" : "Request Aging"}
+              subtitle="Review delayed, due-soon, and fulfillment-waiting requests."
             />
             {slaEntries.length === 0 ? (
               <ActionableEmptyState
                 href="/requests?status=approved"
-                label="No aging risk right now. Check approved requests"
+                label="No aging risk at this time. Review approved requests"
               />
             ) : (
               <div className="dashboard-signal-list dashboard-card-body">
@@ -243,7 +243,7 @@ export default async function HomePage() {
               {urgent.restockRecommendations.length === 0 ? (
                 <ActionableEmptyState
                   href="/inventory?stock=low"
-                  label="No restock gaps right now. Review low-stock items"
+                  label="No restock recommendations at this time. Review low-stock inventory"
                 />
               ) : (
                 <div className="dashboard-signal-list dashboard-card-body">
@@ -277,8 +277,8 @@ export default async function HomePage() {
               data-testid="dashboard-recent-requests"
             >
               <PanelHeading
-                title="My Request Status"
-                subtitle="Recent requests and current progress."
+                title="Request Status Overview"
+                subtitle="Recent requests and current fulfillment status."
               />
               <RecentRequestsList
                 available={recent.available}
@@ -291,8 +291,8 @@ export default async function HomePage() {
           {isAdmin ? (
             <section className="panel dashboard-card">
               <PanelHeading
-                title="Cost-Saving Signals"
-                subtitle="Operational impact signals for stock and request cost."
+                title="Operational Risk Signals"
+                subtitle="Inventory and request patterns that may affect service levels."
               />
               <div className="dashboard-signal-list dashboard-card-body">
                 {businessValueEntries.map((entry) => (
@@ -325,8 +325,8 @@ export default async function HomePage() {
               title="Quick Actions"
               subtitle={
                 isAdmin
-                  ? "Shortcuts that reduce manual operations time."
-                  : "Fast paths for requesting and reusing inventory."
+                  ? "Common operational workflows for inventory and request management."
+                  : "Common workflows for inventory browsing and request submission."
               }
             />
             <div className="quick-action-list dashboard-card-body">
@@ -364,7 +364,7 @@ export default async function HomePage() {
                     href="/requests/new"
                     icon={<PlusCircle />}
                     title="Create Request"
-                    description="Ask for inventory in one step"
+                    description="Submit an inventory request"
                     primary
                   />
                   <QuickAction
@@ -377,12 +377,12 @@ export default async function HomePage() {
                     href="/requests?status=approved"
                     icon={<Clock />}
                     title="Approved Requests"
-                    description={`${dashboard.requests.approvedRequests} waiting fulfillment`}
+                    description={`${dashboard.requests.approvedRequests} awaiting fulfillment`}
                   />
                   <QuickAction
                     href="/requests?status=fulfilled"
                     icon={<PackageCheck />}
-                    title="Request Again"
+                    title="View Fulfilled Requests"
                     description={`${dashboard.requests.fulfilledRequests} completed requests`}
                   />
                 </>

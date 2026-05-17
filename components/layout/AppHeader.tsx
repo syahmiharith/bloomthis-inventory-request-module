@@ -1,19 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useMemo } from "react";
 import type { User } from "@/db/schema";
 import { DemoUserSwitcher } from "@/components/ui/DemoUserSwitcher";
-
-const pageMeta: Array<{ prefix: string; title: string; breadcrumb?: string }> =
-  [
-    { prefix: "/inventory/new", title: "Add Inventory Item" },
-    { prefix: "/inventory", title: "Inventory" },
-    { prefix: "/requests/new", title: "New Request" },
-    { prefix: "/requests", title: "Requests" },
-    { prefix: "/dashboard", title: "Dashboard" },
-    { prefix: "/", title: "Dashboard" },
-  ];
 
 export function AppHeader({
   currentUser,
@@ -22,22 +10,12 @@ export function AppHeader({
   currentUser: User;
   demoUsers: User[];
 }) {
-  const pathname = usePathname();
-  const meta = useMemo(
-    () =>
-      pageMeta.find((entry) => pathname.startsWith(entry.prefix)) ??
-      pageMeta[0],
-    [pathname],
-  );
-
   return (
     <header className="app-header" data-testid="app-header">
       <div className="header-title">
         <div>
-          {meta.breadcrumb ? (
-            <span className="breadcrumb">{meta.breadcrumb}</span>
-          ) : null}
-          <h1>{meta.title}</h1>
+          <span className="breadcrumb">Internal Inventory Operations</span>
+          <h1>BloomThis</h1>
         </div>
       </div>
 

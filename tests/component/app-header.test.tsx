@@ -22,6 +22,7 @@ const users = [
 describe("AppHeader", () => {
   it("shows the demo user switcher and current viewer summary", () => {
     render(<AppHeader currentUser={users[0]} demoUsers={users} />);
+    expect(screen.getByRole("heading", { name: "BloomThis" })).toBeVisible();
     expect(screen.getByText("Viewing as")).toBeVisible();
     expect(screen.getByTestId("profile-summary")).toHaveTextContent("AA");
     expect(screen.getByTestId("profile-summary")).toHaveTextContent("Admin");

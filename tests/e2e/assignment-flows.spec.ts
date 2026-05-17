@@ -7,7 +7,7 @@ test("smoke loads core routes", async ({ page }) => {
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Operations Cockpit" }),
+    page.getByRole("heading", { name: "Operations Dashboard" }),
   ).toBeVisible();
 
   await page.goto("/inventory");
