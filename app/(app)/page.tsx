@@ -20,10 +20,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser();
-  const [dashboard, urgent] = await Promise.all([
-    getDashboardPageData(currentUser),
-    getUrgentDashboard(currentUser),
-  ]);
+  const [dashboard, urgent] = await safeDashboardData(currentUser);
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -339,4 +336,70 @@ function formatDate(value: Date) {
     month: "short",
     day: "numeric",
   });
+}
+
+async function safeDashboardData(
+  currentUser: Awaited<ReturnType<typeof getCurrentUser>>,
+) {
+  try {
+    return await Promise.all([
+      getDashboardPageData(currentUser),
+      getUrgentDashboard(currentUser),
+    ]);
+  } catch (error) {
+    if (!isTimeoutError(error)) {
+      throw error;
+    }
+
+    return [
+      {
+        inventory: {
+          availableItems: 0,
+          lowStockItems: 0,
+          totalItems: 0,
+        },
+        recentRequests: [],
+        requests: {
+          fulfilledRequests: 0,
+          pendingRequests: 0,
+          totalRequests: 0,
+        },
+      },
+      {
+        alerts: {
+          highPriorityPending: 0,
+          lowStock: 0,
+          outOfStock: 0,
+          overdue: 0,
+          pending: 0,
+          requiredSoon: 0,
+        },
+        inventoryRisk: [],
+        priorityQueue: [],
+        recentActivity: [],
+      },
+    ] as const;
+  }
+}
+
+function isTimeoutError(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  if ("code" in error && error.code === "57014") {
+    return true;
+  }
+
+  if (
+    "cause" in error &&
+    typeof error.cause === "object" &&
+    error.cause !== null &&
+    "code" in error.cause &&
+    error.cause.code === "57014"
+  ) {
+    return true;
+  }
+
+  return error instanceof Error && error.message.includes("timeout");
 }
