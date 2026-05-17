@@ -1,17 +1,25 @@
 import { requireAdmin } from "@/lib/auth";
+import { InventoryWorkspace } from "../InventoryWorkspace";
 import { InventoryItemForm } from "./InventoryItemForm";
 
-export default async function NewInventoryItemPage() {
-  await requireAdmin();
+type NewInventoryItemPageProps = {
+  searchParams?: Promise<{
+    category?: string;
+    q?: string;
+    success?: string;
+  }>;
+};
+
+export default async function NewInventoryItemPage({
+  searchParams,
+}: NewInventoryItemPageProps) {
+  const [currentUser, params] = await Promise.all([requireAdmin(), searchParams]);
 
   return (
-    <main
-      className="page-scroll main-scroll-region route-page modal-route"
-      data-testid="main-scroll-region"
-    >
-      <section data-testid="new-inventory-item-page">
-        <InventoryItemForm />
-      </section>
-    </main>
+    <InventoryWorkspace
+      currentUser={currentUser}
+      searchParams={params ?? {}}
+      overlay={<InventoryItemForm />}
+    />
   );
 }

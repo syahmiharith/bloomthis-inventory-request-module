@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import { AppHeader } from "@/components/layout/AppHeader";
+import { AppShell } from "@/components/layout/AppShell";
 import { getCurrentUser, getDemoUsers } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -24,13 +23,9 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="app-shell" data-testid="app-shell">
-          <AppSidebar currentUser={currentUser} />
-          <div className="center-region" data-testid="center-region">
-            <AppHeader currentUser={currentUser} demoUsers={demoUsers} />
-            <div className="content-region">{children}</div>
-          </div>
-        </div>
+        <AppShell currentUser={currentUser} demoUsers={demoUsers}>
+          {children}
+        </AppShell>
         <Analytics />
         <SpeedInsights />
       </body>

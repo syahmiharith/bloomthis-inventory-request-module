@@ -1,11 +1,15 @@
 import { getCurrentUser } from "@/lib/auth";
 import { listItems } from "@/services/item.service";
+import { RequestsWorkspace } from "../RequestsWorkspace";
 import { EmptyRequestModal } from "./EmptyRequestModal";
 import { RequestForm } from "./RequestForm";
 
 type NewRequestPageProps = {
   searchParams?: Promise<{
+    category?: string;
     itemId?: string;
+    q?: string;
+    status?: string;
   }>;
 };
 
@@ -26,12 +30,11 @@ export default async function NewRequestPage({
   }));
 
   return (
-    <main
-      className="page-scroll main-scroll-region route-page modal-route"
-      data-testid="main-scroll-region"
-    >
-      <section data-testid="new-request-page">
-        {requestableItems.length === 0 ? (
+    <RequestsWorkspace
+      currentUser={currentUser}
+      searchParams={params ?? {}}
+      overlay={
+        requestableItems.length === 0 ? (
           <EmptyRequestModal />
         ) : (
           <RequestForm
@@ -39,8 +42,8 @@ export default async function NewRequestPage({
             items={requestableItems}
             requesterName={currentUser.name}
           />
-        )}
-      </section>
-    </main>
+        )
+      }
+    />
   );
 }

@@ -30,6 +30,7 @@ export default async function InventoryDetailPage({
   return (
     <InventoryWorkspace
       currentUser={currentUser}
+      selectedItemId={id}
       searchParams={query ?? {}}
       panel={
         <InventoryItemDetailPanel

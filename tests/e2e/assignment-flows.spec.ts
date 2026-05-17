@@ -33,7 +33,7 @@ test("employee creates request and cannot see admin actions", async ({
 }) => {
   await createEmployeeRequest(page, 1, `E2E employee request ${Date.now()}`);
 
-  await expect(page.getByTestId("request-detail-page")).toBeVisible();
+  await expect(page.getByTestId("request-detail-panel")).toBeVisible();
   await expect(page.getByText("Admin Actions")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Fulfill" })).toHaveCount(0);
@@ -49,12 +49,14 @@ test("admin approves and fulfills a request", async ({ page }) => {
   await switchDemoUser(page, "Aisha Admin (admin)");
   await page.goto(requestUrl);
 
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByText("Approved").first()).toBeVisible();
 
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Fulfill" }).click();
   await expect(page.getByText("Fulfilled").first()).toBeVisible();
-  await expect(page.getByText("Request Fulfilled")).toBeVisible();
+  await expect(page.getByText("Request Fulfilled", { exact: true })).toBeVisible();
 });
 
 test("insufficient stock blocks fulfillment", async ({ page }) => {
@@ -66,10 +68,11 @@ test("insufficient stock blocks fulfillment", async ({ page }) => {
 
   await switchDemoUser(page, "Aisha Admin (admin)");
   await page.goto(requestUrl);
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByText("Approved").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Fulfill" }).click();
+  await expect(page.getByRole("button", { name: "Fulfill" })).toBeDisabled();
   await expect(page.getByText("Insufficient stock").first()).toBeVisible();
   await expect(page.getByText("Approved").first()).toBeVisible();
 });
@@ -85,7 +88,8 @@ async function createEmployeeRequest(
   await page.getByLabel("Reason").fill(reason);
   await page.getByRole("button", { name: "Submit request" }).click();
   await expect(page.getByTestId("requests-page")).toBeVisible();
-  await page.getByRole("link", { name: "View" }).first().click();
+  await page.getByRole("row").filter({ hasText: /^REQ-/ }).first().click();
+  await expect(page.getByTestId("request-detail-panel")).toBeVisible();
   await expect(page.getByText(reason)).toBeVisible();
   return page.url();
 }
@@ -95,8 +99,8 @@ async function switchDemoUser(
   label: string,
 ) {
   await page.goto("/");
-  await page.getByLabel("Role").selectOption({ label });
-  await expect(page.getByLabel("Role")).toHaveValue(
+  await page.getByLabel("Viewing as").selectOption({ label });
+  await expect(page.getByLabel("Viewing as")).toHaveValue(
     label.includes("(admin)")
       ? "admin@inventory.local"
       : "employee@inventory.local",

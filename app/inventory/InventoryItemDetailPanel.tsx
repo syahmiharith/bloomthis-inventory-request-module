@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { stockStatusFromQuantities, type StockStatus } from "@/lib/inventory";
+import { StockBadge } from "@/components/ui/StockBadge";
+import { stockStatusFromQuantities } from "@/lib/inventory";
 import type { getItemById } from "@/services/item.service";
 
 type InventoryItemDetail = NonNullable<Awaited<ReturnType<typeof getItemById>>>;
@@ -93,14 +94,4 @@ export function InventoryItemDetailPanel({
       </section>
     </div>
   );
-}
-
-function StockBadge({ status }: { status: StockStatus }) {
-  const tone =
-    status === "Out of Stock"
-      ? "badge-red"
-      : status === "Low Stock"
-        ? "badge-amber"
-        : "badge-green";
-  return <span className={`badge ${tone}`}>{status}</span>;
 }

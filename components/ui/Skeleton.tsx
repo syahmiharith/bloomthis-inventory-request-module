@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 type SkeletonBlockProps = {
   className?: string;
 };
@@ -76,26 +78,24 @@ export function TableSkeleton({
 
 export function SidePanelSkeleton() {
   return (
-    <aside className="right-side-panel skeleton-side-panel" aria-hidden="true">
-      <div className="right-panel-rail">
+    <aside className="detail-side-panel skeleton-side-panel" aria-hidden="true">
+      <span className="side-panel-resize-handle" />
+      <div className="detail-side-panel-header">
+        <SkeletonBlock className="skeleton-line medium" />
         <SkeletonBlock className="skeleton-icon small" />
       </div>
-      <div className="right-panel-content">
-        <div className="right-panel-header">
-          <SkeletonBlock className="skeleton-line medium" />
-          <div className="button-row">
-            <SkeletonBlock className="skeleton-icon small" />
-            <SkeletonBlock className="skeleton-icon small" />
-          </div>
-        </div>
-        <div className="right-panel-scroll panel-detail-stack">
-          {Array.from({ length: 3 }, (_, index) => (
-            <section className="panel skeleton-panel-section" key={index}>
-              <SkeletonBlock className="skeleton-line medium" />
-              <SkeletonBlock className="skeleton-line" />
-              <SkeletonBlock className="skeleton-line short" />
-            </section>
-          ))}
+      <div className="detail-side-panel-scroll">
+        <div className="panel-detail-stack">
+          <section className="panel skeleton-panel-section">
+            <SkeletonBlock className="skeleton-line medium" />
+            <SkeletonBlock className="skeleton-line" />
+            <SkeletonBlock className="skeleton-line short" />
+          </section>
+          <section className="panel skeleton-panel-section">
+            <SkeletonBlock className="skeleton-line medium" />
+            <SkeletonBlock className="skeleton-line" />
+            <SkeletonBlock className="skeleton-line short" />
+          </section>
         </div>
       </div>
     </aside>
@@ -133,15 +133,17 @@ export function ModalSkeleton() {
 }
 
 export function WorkspaceTableSkeleton({
+  children,
   titleWidth = "medium",
   withPanel = false,
 }: {
+  children?: ReactNode;
   titleWidth?: "short" | "medium";
   withPanel?: boolean;
 }) {
   return (
-    <div className="split-workspace">
-      <div className="split-workspace-main">
+    <div className="workspace-layout">
+      <div className="workspace-layout-main">
         <main className="page-scroll main-scroll-region route-page">
           <section>
             <div className="route-heading skeleton-route-heading">
@@ -156,6 +158,7 @@ export function WorkspaceTableSkeleton({
               <TableSkeleton />
             </section>
           </section>
+          {children}
         </main>
       </div>
       {withPanel ? <SidePanelSkeleton /> : null}

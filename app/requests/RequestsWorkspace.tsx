@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { PlusCircle, Search } from "lucide-react";
-import { SplitWorkspace } from "@/components/layout/SplitWorkspace";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
+import { DataTable } from "@/components/ui/DataTable";
+import { DataToolbar } from "@/components/ui/DataToolbar";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { User } from "@/db/schema";
 import type { RequestStatus } from "@/lib/constants";
 import { listRequests } from "@/services/request.service";
@@ -23,11 +28,15 @@ const requestStatuses: RequestStatus[] = [
 
 export async function RequestsWorkspace({
   currentUser,
+  overlay,
   panel,
+  selectedRequestId,
   searchParams,
 }: {
   currentUser: User;
+  overlay?: React.ReactNode;
   panel?: React.ReactNode;
+  selectedRequestId?: string;
   searchParams: RequestWorkspaceSearchParams;
 }) {
   const selectedStatus = requestStatuses.includes(
@@ -62,8 +71,8 @@ export async function RequestsWorkspace({
   });
 
   return (
-    <SplitWorkspace
-      panel={
+    <WorkspaceLayout
+      sidePanel={
         panel
           ? {
               children: panel,
@@ -78,16 +87,15 @@ export async function RequestsWorkspace({
         data-testid="main-scroll-region"
       >
         <section data-testid="requests-page">
-          <div className="route-heading">
-            <div>
-              <h2>Requests</h2>
-              <p>
-                {isAdmin
-                  ? "Review inventory requests and fulfill approved requests."
-                  : "Track your demo-user inventory requests."}
-              </p>
-            </div>
-            {!isAdmin ? (
+          <PageHeader
+            title="Requests"
+            description={
+              isAdmin
+                ? "Review inventory requests and fulfill approved requests."
+                : "Track your demo-user inventory requests."
+            }
+            actions={
+              !isAdmin ? (
               <Link
                 className="button button-primary actions"
                 href="/requests/new"
@@ -95,8 +103,9 @@ export async function RequestsWorkspace({
                 <PlusCircle size={16} />
                 Create Request
               </Link>
-            ) : null}
-          </div>
+              ) : null
+            }
+          />
 
           {searchParams.success ? (
             <p aria-live="polite" className="alert alert-success">
@@ -111,7 +120,8 @@ export async function RequestsWorkspace({
           ) : null}
 
           <section className="panel">
-            <form action="/requests" className="stock-toolbar">
+            <form action="/requests">
+              <DataToolbar>
               <label className="search-field">
                 <span className="sr-only">Search requests</span>
                 <Search />
@@ -153,24 +163,25 @@ export async function RequestsWorkspace({
                   Clear filters
                 </Link>
               ) : null}
+              </DataToolbar>
             </form>
 
             {filteredRequests.length === 0 ? (
-              <div className="empty-state-card">
-                <p>
-                  {isAdmin
-                    ? "No employee requests match this view. New employee requests will appear here."
-                    : "You have no demo-user requests in this view."}
-                </p>
-                {!isAdmin ? (
+              <EmptyState
+                action={
+                  !isAdmin ? (
                   <Link className="button button-primary" href="/requests/new">
                     Create Request
                   </Link>
-                ) : null}
-              </div>
+                  ) : null
+                }
+              >
+                {isAdmin
+                  ? "No employee requests match this view. New employee requests will appear here."
+                  : "You have no demo-user requests in this view."}
+              </EmptyState>
             ) : (
-              <div className="table-wrap compact">
-                <table className="data-table requests-table">
+              <DataTable className="requests-table">
                   <thead>
                     <tr>
                       <th className="col-code">Request</th>
@@ -195,7 +206,11 @@ export async function RequestsWorkspace({
                             item.availableQuantity >= item.requestedQuantity,
                         );
                       return (
-                        <ClickableRow href={`/requests/${request.id}`} key={request.id}>
+                        <ClickableRow
+                          href={`/requests/${request.id}`}
+                          key={request.id}
+                          selected={selectedRequestId === request.id}
+                        >
                           <td className="mono-cell truncate-cell" title={request.requestCode}>
                             {request.requestCode}
                           </td>
@@ -229,26 +244,14 @@ export async function RequestsWorkspace({
                       );
                     })}
                   </tbody>
-                </table>
-              </div>
+              </DataTable>
             )}
           </section>
         </section>
+        {overlay}
       </main>
-    </SplitWorkspace>
+    </WorkspaceLayout>
   );
-}
-
-function StatusBadge({ status }: { status: RequestStatus }) {
-  const tone =
-    status === "fulfilled"
-      ? "badge-green"
-      : status === "approved"
-        ? "badge-blue"
-        : status === "rejected"
-          ? "badge-red"
-          : "badge-amber";
-  return <span className={`badge ${tone}`}>{capitalize(status)}</span>;
 }
 
 function StockSummary({

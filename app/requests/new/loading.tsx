@@ -1,9 +1,9 @@
-import { ModalSkeleton } from "@/components/ui/Skeleton";
+import { ModalSkeleton, WorkspaceTableSkeleton } from "@/components/ui/Skeleton";
 
 export default function NewRequestLoading() {
   return (
-    <main className="page-scroll main-scroll-region route-page modal-route">
+    <WorkspaceTableSkeleton titleWidth="short">
       <ModalSkeleton />
-    </main>
+    </WorkspaceTableSkeleton>
   );
 }

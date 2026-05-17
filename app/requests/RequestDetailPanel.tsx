@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { RequestStatus } from "@/lib/constants";
 import { StatusActionForm } from "./StatusActionForm";
 import { updateRequestDetailStatusAction } from "./[id]/actions";
@@ -225,18 +226,6 @@ function AdminActions({
   }
 
   return <p className="empty-state">No actions available for this status.</p>;
-}
-
-function StatusBadge({ status }: { status: RequestStatus }) {
-  const tone =
-    status === "fulfilled"
-      ? "badge-green"
-      : status === "approved"
-        ? "badge-blue"
-        : status === "rejected"
-          ? "badge-red"
-          : "badge-amber";
-  return <span className={`badge ${tone}`}>{capitalize(status)}</span>;
 }
 
 function formatDateTime(value: string) {

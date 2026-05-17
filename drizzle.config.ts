@@ -1,4 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "drizzle-kit";
 
 loadLocalEnv();
@@ -20,9 +22,7 @@ function getMigrationDatabaseUrl() {
     process.env.POSTGRES_URL;
 
   if (!url) {
-    throw new Error(
-      "MIGRATE_DATABASE_URL, DATABASE_URL, POSTGRES_URL_NON_POOLING, or POSTGRES_URL is required for Drizzle migrations.",
-    );
+    return "postgres://postgres:postgres@localhost:5432/inventory_request_module";
   }
 
   return url;
@@ -38,17 +38,20 @@ function loadLocalEnv() {
     return;
   }
 
-  const envPath = existsSync(".env.local")
-    ? ".env.local"
-    : existsSync(".env")
-      ? ".env"
+  const configDir = dirname(fileURLToPath(import.meta.url));
+  const envLocalPath = join(configDir, ".env.local");
+  const envPath = join(configDir, ".env");
+  const resolvedEnvPath = existsSync(envLocalPath)
+    ? envLocalPath
+    : existsSync(envPath)
+      ? envPath
       : null;
 
-  if (!envPath) {
+  if (!resolvedEnvPath) {
     return;
   }
 
-  for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+  for (const line of readFileSync(resolvedEnvPath, "utf8").split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) {
       continue;

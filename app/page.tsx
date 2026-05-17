@@ -9,10 +9,11 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import type { RequestStatus } from "@/lib/constants";
 import { getDashboardPageData } from "@/services/dashboard.service";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { KpiCard, KpiGrid } from "@/components/ui/Kpi";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser();
@@ -25,16 +26,14 @@ export default async function HomePage() {
       data-testid="main-scroll-region"
     >
       <section data-testid="dashboard-page">
-        <div className="route-heading dashboard-heading">
-          <div>
-            <h2>{isAdmin ? "Inventory Dashboard" : "My Inventory Requests"}</h2>
-            <p>
-              {isAdmin
-                ? "Monitor stock, pending requests, and recent request activity."
-                : "Browse available inventory and track your demo-user requests."}
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title={isAdmin ? "Inventory Dashboard" : "My Inventory Requests"}
+          description={
+            isAdmin
+              ? "Monitor stock, pending requests, and recent request activity."
+              : "Browse available inventory and track your demo-user requests."
+          }
+        />
 
         <KpiGrid testId="dashboard-summary-cards">
           {isAdmin ? (
@@ -261,25 +260,9 @@ function QuickAction({
   );
 }
 
-function StatusBadge({ status }: { status: RequestStatus }) {
-  const tone =
-    status === "fulfilled"
-      ? "badge-green"
-      : status === "approved"
-        ? "badge-blue"
-        : status === "rejected"
-          ? "badge-red"
-          : "badge-amber";
-  return <span className={`badge ${tone}`}>{capitalize(status)}</span>;
-}
-
 function formatDate(value: Date) {
   return value.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
-}
-
-function capitalize(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }

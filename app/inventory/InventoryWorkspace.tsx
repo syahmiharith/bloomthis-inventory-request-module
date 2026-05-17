@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { PlusCircle, Search } from "lucide-react";
-import { SplitWorkspace } from "@/components/layout/SplitWorkspace";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
+import { DataTable } from "@/components/ui/DataTable";
+import { DataToolbar } from "@/components/ui/DataToolbar";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { StockBadge } from "@/components/ui/StockBadge";
 import type { User } from "@/db/schema";
-import { stockStatusFromQuantities, type StockStatus } from "@/lib/inventory";
+import { stockStatusFromQuantities } from "@/lib/inventory";
 import { listItems } from "@/services/item.service";
 
 export type InventoryWorkspaceSearchParams = {
@@ -14,11 +19,15 @@ export type InventoryWorkspaceSearchParams = {
 
 export async function InventoryWorkspace({
   currentUser,
+  overlay,
   panel,
+  selectedItemId,
   searchParams,
 }: {
   currentUser: User;
+  overlay?: React.ReactNode;
   panel?: React.ReactNode;
+  selectedItemId?: string;
   searchParams: InventoryWorkspaceSearchParams;
 }) {
   const query = searchParams.q?.trim() ?? "";
@@ -39,8 +48,8 @@ export async function InventoryWorkspace({
   const isAdmin = currentUser.role === "admin";
 
   return (
-    <SplitWorkspace
-      panel={
+    <WorkspaceLayout
+      sidePanel={
         panel
           ? {
               children: panel,
@@ -55,15 +64,11 @@ export async function InventoryWorkspace({
         data-testid="main-scroll-region"
       >
         <section data-testid="inventory-page">
-          <div className="route-heading">
-            <div>
-              <h2>Inventory</h2>
-              <p>
-                Browse current stock levels and identify low-stock or
-                out-of-stock items.
-              </p>
-            </div>
-            {isAdmin ? (
+          <PageHeader
+            title="Inventory"
+            description="Browse current stock levels and identify low-stock or out-of-stock items."
+            actions={
+              isAdmin ? (
               <Link
                 className="button button-primary actions"
                 href="/inventory/new"
@@ -71,8 +76,9 @@ export async function InventoryWorkspace({
                 <PlusCircle size={16} />
                 Add Item
               </Link>
-            ) : null}
-          </div>
+              ) : null
+            }
+          />
 
           {searchParams.success ? (
             <p aria-live="polite" className="alert alert-success">
@@ -81,7 +87,8 @@ export async function InventoryWorkspace({
           ) : null}
 
           <section className="panel inventory-control-panel">
-            <form className="stock-toolbar" action="/inventory">
+            <form action="/inventory">
+              <DataToolbar>
               <label className="search-field">
                 <span className="sr-only">Search inventory</span>
                 <Search />
@@ -112,20 +119,23 @@ export async function InventoryWorkspace({
                   Clear filters
                 </Link>
               ) : null}
+              </DataToolbar>
             </form>
 
             {filteredItems.length === 0 ? (
-              <div className="empty-state-card">
-                <p>No inventory items match this view.</p>
-                {isAdmin ? (
+              <EmptyState
+                action={
+                  isAdmin ? (
                   <Link className="button button-primary" href="/inventory/new">
                     Add Inventory Item
                   </Link>
-                ) : null}
-              </div>
+                  ) : null
+                }
+              >
+                No inventory items match this view.
+              </EmptyState>
             ) : (
-              <div className="table-wrap stock-table-wrap">
-                <table className="data-table inventory-table">
+              <DataTable className="inventory-table">
                   <thead>
                     <tr>
                       <th className="col-item">Item</th>
@@ -150,10 +160,11 @@ export async function InventoryWorkspace({
                               ? "is-out"
                               : status === "Low Stock"
                                 ? "is-low"
-                                : undefined
+                            : undefined
                           }
                           href={`/inventory/${item.id}`}
                           key={item.id}
+                          selected={selectedItemId === item.id}
                         >
                           <td className="truncate-cell" title={item.name}>
                             <strong>{item.name}</strong>
@@ -182,22 +193,12 @@ export async function InventoryWorkspace({
                       );
                     })}
                   </tbody>
-                </table>
-              </div>
+              </DataTable>
             )}
           </section>
         </section>
+        {overlay}
       </main>
-    </SplitWorkspace>
+    </WorkspaceLayout>
   );
-}
-
-function StockBadge({ status }: { status: StockStatus }) {
-  const tone =
-    status === "Out of Stock"
-      ? "badge-red"
-      : status === "Low Stock"
-        ? "badge-amber"
-        : "badge-green";
-  return <span className={`badge ${tone}`}>{status}</span>;
 }

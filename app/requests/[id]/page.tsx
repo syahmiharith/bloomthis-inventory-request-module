@@ -27,6 +27,7 @@ export default async function RequestDetailPage({
   return (
     <RequestsWorkspace
       currentUser={currentUser}
+      selectedRequestId={id}
       searchParams={query ?? {}}
       panel={
         <RequestDetailPanel

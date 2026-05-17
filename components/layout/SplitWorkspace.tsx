@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { RightSidePanel } from "./RightSidePanel";
+import { WorkspaceLayout } from "./WorkspaceLayout";
 
 export function SplitWorkspace({
   children,
@@ -13,13 +13,6 @@ export function SplitWorkspace({
   };
 }) {
   return (
-    <div className="split-workspace">
-      <div className="split-workspace-main">{children}</div>
-      {panel ? (
-        <RightSidePanel closeHref={panel.closeHref} title={panel.title}>
-          {panel.children}
-        </RightSidePanel>
-      ) : null}
-    </div>
+    <WorkspaceLayout sidePanel={panel}>{children}</WorkspaceLayout>
   );
 }
