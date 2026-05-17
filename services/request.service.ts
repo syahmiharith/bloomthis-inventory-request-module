@@ -122,9 +122,7 @@ const listRequestsCached = cache(async function listRequestsCached(
     .offset((safePage - 1) * pageSize);
   const requestIds = requests.map((request) => request.id);
   const [itemRows, categories] = await Promise.all([
-    requestIds.length > 0
-      ? getRequestItems(requestIds)
-      : Promise.resolve([]),
+    requestIds.length > 0 ? getRequestItems(requestIds) : Promise.resolve([]),
     listRequestCategoriesCached(viewerId, viewerRole),
   ]);
   const itemsByRequest = groupRequestItems(itemRows);
@@ -469,7 +467,10 @@ async function getRequestItems(requestIds: string[]) {
       unit: inventoryRequestItems.unit,
     })
     .from(inventoryRequestItems)
-    .innerJoin(inventoryItems, eq(inventoryRequestItems.itemId, inventoryItems.id))
+    .innerJoin(
+      inventoryItems,
+      eq(inventoryRequestItems.itemId, inventoryItems.id),
+    )
     .where(inArray(inventoryRequestItems.requestId, requestIds))
     .orderBy(asc(inventoryItems.name));
 }
@@ -477,7 +478,10 @@ async function getRequestItems(requestIds: string[]) {
 function groupRequestItems(
   itemRows: Awaited<ReturnType<typeof getRequestItems>>,
 ) {
-  const result = new Map<string, Array<Omit<(typeof itemRows)[number], "requestId">>>();
+  const result = new Map<
+    string,
+    Array<Omit<(typeof itemRows)[number], "requestId">>
+  >();
   for (const row of itemRows) {
     const current = result.get(row.requestId) ?? [];
     const { requestId, ...item } = row;
@@ -520,9 +524,7 @@ function normalizePage(page?: number) {
 }
 
 function normalizePageSize(pageSize?: number) {
-  const value = Number.isFinite(pageSize)
-    ? Math.floor(pageSize ?? 25)
-    : 25;
+  const value = Number.isFinite(pageSize) ? Math.floor(pageSize ?? 25) : 25;
   return Math.min(Math.max(value, 1), 100);
 }
 
@@ -535,6 +537,8 @@ async function withDevTiming<T>(label: string, fn: () => Promise<T>) {
   try {
     return await fn();
   } finally {
-    console.info(`[db:${label}] ${Math.round(performance.now() - startedAt)}ms`);
+    console.info(
+      `[db:${label}] ${Math.round(performance.now() - startedAt)}ms`,
+    );
   }
 }

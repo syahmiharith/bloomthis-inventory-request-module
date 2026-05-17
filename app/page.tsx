@@ -130,7 +130,11 @@ export default async function HomePage() {
               ]
                 .slice(0, 8)
                 .map((entry) => (
-                  <Link className="dashboard-risk-row" href={entry.href} key={entry.href}>
+                  <Link
+                    className="dashboard-risk-row"
+                    href={entry.href}
+                    key={entry.href}
+                  >
                     <span className="badge badge-amber">{entry.label}</span>
                     <strong>{entry.target}</strong>
                     <span>{entry.reason}</span>
@@ -157,7 +161,9 @@ export default async function HomePage() {
                   <thead>
                     <tr>
                       <th className="col-code">Request</th>
-                      {isAdmin ? <th className="col-person">Requester</th> : null}
+                      {isAdmin ? (
+                        <th className="col-person">Requester</th>
+                      ) : null}
                       <th className="col-items">Items</th>
                       <th className="col-number">Qty</th>
                       <th className="col-status">Status</th>
@@ -166,12 +172,21 @@ export default async function HomePage() {
                   </thead>
                   <tbody>
                     {dashboard.recentRequests.map((request) => (
-                      <ClickableRow href={`/requests/${request.id}`} key={request.id}>
-                        <td className="mono-cell truncate-cell" title={request.requestCode}>
+                      <ClickableRow
+                        href={`/requests/${request.id}`}
+                        key={request.id}
+                      >
+                        <td
+                          className="mono-cell truncate-cell"
+                          title={request.requestCode}
+                        >
                           {request.requestCode}
                         </td>
                         {isAdmin ? (
-                          <td className="truncate-cell" title={request.requesterName}>
+                          <td
+                            className="truncate-cell"
+                            title={request.requesterName}
+                          >
                             {request.requesterName}
                           </td>
                         ) : null}
@@ -182,7 +197,9 @@ export default async function HomePage() {
                         <td>
                           <StatusBadge status={request.status} />
                         </td>
-                        <td className="hide-md">{formatDate(request.createdAt)}</td>
+                        <td className="hide-md">
+                          {formatDate(request.createdAt)}
+                        </td>
                       </ClickableRow>
                     ))}
                   </tbody>

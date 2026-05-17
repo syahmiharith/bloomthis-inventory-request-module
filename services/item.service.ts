@@ -137,14 +137,16 @@ export async function listItemCategories() {
   return listItemCategoriesCached();
 }
 
-const listItemCategoriesCached = cache(async function listItemCategoriesCached() {
-  const rows = await db
-    .selectDistinct({ category: inventoryItems.category })
-    .from(inventoryItems)
-    .orderBy(asc(inventoryItems.category));
+const listItemCategoriesCached = cache(
+  async function listItemCategoriesCached() {
+    const rows = await db
+      .selectDistinct({ category: inventoryItems.category })
+      .from(inventoryItems)
+      .orderBy(asc(inventoryItems.category));
 
-  return rows.map((row) => row.category);
-});
+    return rows.map((row) => row.category);
+  },
+);
 
 export async function listRequestableItems({
   page,
@@ -167,65 +169,65 @@ export async function listRequestableItems({
   );
 }
 
-const listRequestableItemsCached = cache(async function listRequestableItemsCached(
-  page: number,
-  pageSize: number,
-  query: string,
-  selectedId: string,
-) {
-  const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
-  const conditions = [];
-  if (query) {
-    const search = `%${query}%`;
-    conditions.push(
-      sql`(
+const listRequestableItemsCached = cache(
+  async function listRequestableItemsCached(
+    page: number,
+    pageSize: number,
+    query: string,
+    selectedId: string,
+  ) {
+    const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
+    const conditions = [];
+    if (query) {
+      const search = `%${query}%`;
+      conditions.push(
+        sql`(
         ${inventoryItems.name} ilike ${search}
         or ${inventoryItems.sku} ilike ${search}
         or ${inventoryItems.category} ilike ${search}
       )`,
-    );
-  }
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  const [totalRow] = await db
-    .select({ totalCount: sql<number>`count(*)::int` })
-    .from(inventoryItems)
-    .where(whereClause);
-  const totalCount = totalRow?.totalCount ?? 0;
-  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
-  const safePage = Math.min(page, pageCount);
+      );
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const [totalRow] = await db
+      .select({ totalCount: sql<number>`count(*)::int` })
+      .from(inventoryItems)
+      .where(whereClause);
+    const totalCount = totalRow?.totalCount ?? 0;
+    const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+    const safePage = Math.min(page, pageCount);
 
-  const rows = await db
-    .select(requestableItemSelection(available))
-    .from(inventoryItems)
-    .where(whereClause)
-    .orderBy(asc(inventoryItems.name))
-    .limit(pageSize)
-    .offset((safePage - 1) * pageSize);
-
-  if (selectedId && !rows.some((item) => item.id === selectedId)) {
-    const [selectedItem] = await db
+    const rows = await db
       .select(requestableItemSelection(available))
       .from(inventoryItems)
-      .where(eq(inventoryItems.id, selectedId))
-      .limit(1);
+      .where(whereClause)
+      .orderBy(asc(inventoryItems.name))
+      .limit(pageSize)
+      .offset((safePage - 1) * pageSize);
 
-    if (selectedItem) {
-      rows.unshift(selectedItem);
+    if (selectedId && !rows.some((item) => item.id === selectedId)) {
+      const [selectedItem] = await db
+        .select(requestableItemSelection(available))
+        .from(inventoryItems)
+        .where(eq(inventoryItems.id, selectedId))
+        .limit(1);
+
+      if (selectedItem) {
+        rows.unshift(selectedItem);
+      }
     }
-  }
 
-  return {
-    page: safePage,
-    pageCount,
-    pageSize,
-    rows,
-    totalCount,
-  };
-});
+    return {
+      page: safePage,
+      pageCount,
+      pageSize,
+      rows,
+      totalCount,
+    };
+  },
+);
 
-function requestableItemSelection(
-  available: ReturnType<typeof sql<number>>,
-) {
+function requestableItemSelection(available: ReturnType<typeof sql<number>>) {
   return {
     available,
     category: inventoryItems.category,
@@ -276,155 +278,159 @@ export async function getStockOverviewData() {
   return getStockOverviewDataCached();
 }
 
-const getStockOverviewDataCached = cache(async function getStockOverviewDataCached() {
-  const items = await listAllItemsForOverview();
-  const itemIds = items.map((item) => item.id);
+const getStockOverviewDataCached = cache(
+  async function getStockOverviewDataCached() {
+    const items = await listAllItemsForOverview();
+    const itemIds = items.map((item) => item.id);
 
-  const [pendingDemandRows, relatedRequestRows, recentActivityRows] =
-    await Promise.all([
-      db
-        .select({
-          itemId: inventoryRequestItems.itemId,
-          pendingDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+    const [pendingDemandRows, relatedRequestRows, recentActivityRows] =
+      await Promise.all([
+        db
+          .select({
+            itemId: inventoryRequestItems.itemId,
+            pendingDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
             where ${inventoryRequests.status} in ('pending', 'approved')
           ), 0)::int`,
-        })
-        .from(inventoryRequestItems)
-        .innerJoin(
-          inventoryRequests,
-          eq(inventoryRequestItems.requestId, inventoryRequests.id),
-        )
-        .where(inArray(inventoryRequestItems.itemId, itemIds))
-        .groupBy(inventoryRequestItems.itemId),
-      db
-        .select({
-          itemId: inventoryRequestItems.itemId,
-          requestId: inventoryRequests.id,
-          requestCode: inventoryRequests.requestCode,
-          requesterName: users.name,
-          status: inventoryRequests.status,
-          quantityRequested: inventoryRequestItems.quantityRequested,
-          unit: inventoryRequestItems.unit,
-          requiredBy: inventoryRequests.requiredBy,
-        })
-        .from(inventoryRequestItems)
-        .innerJoin(
-          inventoryRequests,
-          eq(inventoryRequestItems.requestId, inventoryRequests.id),
-        )
-        .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
-        .where(
-          and(
-            inArray(inventoryRequestItems.itemId, itemIds),
-            inArray(inventoryRequests.status, ["pending", "approved"]),
-          ),
-        )
-        .orderBy(desc(inventoryRequests.createdAt)),
-      db
-        .select({
-          itemId: inventoryRequestItems.itemId,
-          id: auditLogs.id,
-          action: auditLogs.action,
-          actorName: auditLogs.actorName,
-          requestCode: inventoryRequests.requestCode,
-          createdAt: auditLogs.createdAt,
-        })
-        .from(inventoryRequestItems)
-        .innerJoin(
-          inventoryRequests,
-          eq(inventoryRequestItems.requestId, inventoryRequests.id),
-        )
-        .innerJoin(auditLogs, eq(auditLogs.requestId, inventoryRequests.id))
-        .where(inArray(inventoryRequestItems.itemId, itemIds))
-        .orderBy(desc(auditLogs.createdAt)),
-    ]);
+          })
+          .from(inventoryRequestItems)
+          .innerJoin(
+            inventoryRequests,
+            eq(inventoryRequestItems.requestId, inventoryRequests.id),
+          )
+          .where(inArray(inventoryRequestItems.itemId, itemIds))
+          .groupBy(inventoryRequestItems.itemId),
+        db
+          .select({
+            itemId: inventoryRequestItems.itemId,
+            requestId: inventoryRequests.id,
+            requestCode: inventoryRequests.requestCode,
+            requesterName: users.name,
+            status: inventoryRequests.status,
+            quantityRequested: inventoryRequestItems.quantityRequested,
+            unit: inventoryRequestItems.unit,
+            requiredBy: inventoryRequests.requiredBy,
+          })
+          .from(inventoryRequestItems)
+          .innerJoin(
+            inventoryRequests,
+            eq(inventoryRequestItems.requestId, inventoryRequests.id),
+          )
+          .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+          .where(
+            and(
+              inArray(inventoryRequestItems.itemId, itemIds),
+              inArray(inventoryRequests.status, ["pending", "approved"]),
+            ),
+          )
+          .orderBy(desc(inventoryRequests.createdAt)),
+        db
+          .select({
+            itemId: inventoryRequestItems.itemId,
+            id: auditLogs.id,
+            action: auditLogs.action,
+            actorName: auditLogs.actorName,
+            requestCode: inventoryRequests.requestCode,
+            createdAt: auditLogs.createdAt,
+          })
+          .from(inventoryRequestItems)
+          .innerJoin(
+            inventoryRequests,
+            eq(inventoryRequestItems.requestId, inventoryRequests.id),
+          )
+          .innerJoin(auditLogs, eq(auditLogs.requestId, inventoryRequests.id))
+          .where(inArray(inventoryRequestItems.itemId, itemIds))
+          .orderBy(desc(auditLogs.createdAt)),
+      ]);
 
-  const demandByItem = new Map(
-    pendingDemandRows.map((row) => [row.itemId, row.pendingDemand]),
-  );
-  const relatedByItem = new Map<
-    string,
-    Array<{
-      requestId: string;
-      requestCode: string;
-      requesterName: string;
-      status: "pending" | "approved" | "rejected" | "fulfilled";
-      quantityRequested: number;
-      unit: string;
-      requiredBy: string;
-    }>
-  >();
-  for (const row of relatedRequestRows) {
-    const current = relatedByItem.get(row.itemId) ?? [];
-    if (current.length < 5) {
-      current.push({
-        requestId: row.requestId,
-        requestCode: row.requestCode,
-        requesterName: row.requesterName,
-        status: row.status,
-        quantityRequested: row.quantityRequested,
-        unit: row.unit,
-        requiredBy: row.requiredBy.toISOString(),
-      });
-    }
-    relatedByItem.set(row.itemId, current);
-  }
-
-  const activityByItem = new Map<
-    string,
-    Array<{
-      id: string;
-      action: string;
-      actorName: string;
-      requestCode: string;
-      createdAt: string;
-    }>
-  >();
-  for (const row of recentActivityRows) {
-    const current = activityByItem.get(row.itemId) ?? [];
-    if (current.length < 5) {
-      current.push({
-        id: row.id,
-        action: row.action,
-        actorName: row.actorName,
-        requestCode: row.requestCode,
-        createdAt: row.createdAt.toISOString(),
-      });
-    }
-    activityByItem.set(row.itemId, current);
-  }
-
-  const hydratedItems = items
-    .map((item) => {
-      const status = stockStatusFromQuantities(
-        item.quantityOnHand,
-        item.quantityReserved,
-        item.reorderPoint,
-      );
-      return {
-        ...item,
-        status,
-        pendingDemand: demandByItem.get(item.id) ?? 0,
-        relatedRequests: relatedByItem.get(item.id) ?? [],
-        recentActivity: activityByItem.get(item.id) ?? [],
-      };
-    })
-    .sort(
-      (left, right) =>
-        stockRiskRank(left.status) - stockRiskRank(right.status) ||
-        left.available - right.available ||
-        left.name.localeCompare(right.name),
+    const demandByItem = new Map(
+      pendingDemandRows.map((row) => [row.itemId, row.pendingDemand]),
     );
+    const relatedByItem = new Map<
+      string,
+      Array<{
+        requestId: string;
+        requestCode: string;
+        requesterName: string;
+        status: "pending" | "approved" | "rejected" | "fulfilled";
+        quantityRequested: number;
+        unit: string;
+        requiredBy: string;
+      }>
+    >();
+    for (const row of relatedRequestRows) {
+      const current = relatedByItem.get(row.itemId) ?? [];
+      if (current.length < 5) {
+        current.push({
+          requestId: row.requestId,
+          requestCode: row.requestCode,
+          requesterName: row.requesterName,
+          status: row.status,
+          quantityRequested: row.quantityRequested,
+          unit: row.unit,
+          requiredBy: row.requiredBy.toISOString(),
+        });
+      }
+      relatedByItem.set(row.itemId, current);
+    }
 
-  return {
-    items: hydratedItems,
-    kpis: calculateStockKpis(hydratedItems),
-    categories: Array.from(new Set(hydratedItems.map((item) => item.category))),
-    warehouses: Array.from(
-      new Set(hydratedItems.map((item) => item.warehouse)),
-    ),
-  };
-});
+    const activityByItem = new Map<
+      string,
+      Array<{
+        id: string;
+        action: string;
+        actorName: string;
+        requestCode: string;
+        createdAt: string;
+      }>
+    >();
+    for (const row of recentActivityRows) {
+      const current = activityByItem.get(row.itemId) ?? [];
+      if (current.length < 5) {
+        current.push({
+          id: row.id,
+          action: row.action,
+          actorName: row.actorName,
+          requestCode: row.requestCode,
+          createdAt: row.createdAt.toISOString(),
+        });
+      }
+      activityByItem.set(row.itemId, current);
+    }
+
+    const hydratedItems = items
+      .map((item) => {
+        const status = stockStatusFromQuantities(
+          item.quantityOnHand,
+          item.quantityReserved,
+          item.reorderPoint,
+        );
+        return {
+          ...item,
+          status,
+          pendingDemand: demandByItem.get(item.id) ?? 0,
+          relatedRequests: relatedByItem.get(item.id) ?? [],
+          recentActivity: activityByItem.get(item.id) ?? [],
+        };
+      })
+      .sort(
+        (left, right) =>
+          stockRiskRank(left.status) - stockRiskRank(right.status) ||
+          left.available - right.available ||
+          left.name.localeCompare(right.name),
+      );
+
+    return {
+      items: hydratedItems,
+      kpis: calculateStockKpis(hydratedItems),
+      categories: Array.from(
+        new Set(hydratedItems.map((item) => item.category)),
+      ),
+      warehouses: Array.from(
+        new Set(hydratedItems.map((item) => item.warehouse)),
+      ),
+    };
+  },
+);
 
 async function listAllItemsForOverview() {
   const rows = await db
@@ -461,9 +467,7 @@ function normalizePage(page?: number) {
 }
 
 function normalizePageSize(pageSize?: number) {
-  const value = Number.isFinite(pageSize)
-    ? Math.floor(pageSize ?? 25)
-    : 25;
+  const value = Number.isFinite(pageSize) ? Math.floor(pageSize ?? 25) : 25;
   return Math.min(Math.max(value, 1), 100);
 }
 
@@ -476,7 +480,9 @@ async function withDevTiming<T>(label: string, fn: () => Promise<T>) {
   try {
     return await fn();
   } finally {
-    console.info(`[db:${label}] ${Math.round(performance.now() - startedAt)}ms`);
+    console.info(
+      `[db:${label}] ${Math.round(performance.now() - startedAt)}ms`,
+    );
   }
 }
 

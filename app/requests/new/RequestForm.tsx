@@ -55,10 +55,9 @@ export function RequestForm({
   );
   const selectedIds = lines.map((line) => line.itemId).filter(Boolean);
   const itemById = useMemo(() => {
-    const entries = [...Object.values(selectedItems), ...items].map((item) => [
-      item.id,
-      item,
-    ] as const);
+    const entries = [...Object.values(selectedItems), ...items].map(
+      (item) => [item.id, item] as const,
+    );
     return new Map(entries);
   }, [items, selectedItems]);
 
@@ -304,7 +303,8 @@ export function RequestForm({
                 entryIndex !== index && entry.itemId === line.itemId,
             );
             const exceedsStock =
-              selectedItem !== undefined && line.quantity > selectedItem.available;
+              selectedItem !== undefined &&
+              line.quantity > selectedItem.available;
 
             return (
               <div className="request-line" key={line.id}>
@@ -334,7 +334,9 @@ export function RequestForm({
                       </option>
                     ))}
                   </select>
-                  <FieldError message={state.errors?.[`items.${index}.itemId`]} />
+                  <FieldError
+                    message={state.errors?.[`items.${index}.itemId`]}
+                  />
                   {duplicate ? (
                     <span className="form-message error">
                       Duplicate item lines are not allowed.
@@ -386,9 +388,12 @@ export function RequestForm({
                 </button>
 
                 {exceedsStock ? (
-                  <p aria-live="polite" className="alert alert-info line-warning">
-                    Requested quantity exceeds current stock. Fulfillment will be
-                    blocked until enough stock exists.
+                  <p
+                    aria-live="polite"
+                    className="alert alert-info line-warning"
+                  >
+                    Requested quantity exceeds current stock. Fulfillment will
+                    be blocked until enough stock exists.
                   </p>
                 ) : null}
               </div>
@@ -404,7 +409,9 @@ export function RequestForm({
                 <button
                   className="button button-secondary button-compact"
                   disabled={itemLookup.page <= 1 || itemLookup.loading}
-                  onClick={() => setItemPage((current) => Math.max(1, current - 1))}
+                  onClick={() =>
+                    setItemPage((current) => Math.max(1, current - 1))
+                  }
                   type="button"
                 >
                   Previous

@@ -122,47 +122,47 @@ export async function RequestsWorkspace({
           <section className="panel">
             <form action="/requests">
               <DataToolbar>
-              <label className="search-field">
-                <span className="sr-only">Search requests</span>
-                <Search />
-                <input
-                  className="input"
-                  defaultValue={searchParams.q ?? ""}
-                  name="q"
-                  placeholder="Search code, requester, or item"
-                  type="search"
-                />
-              </label>
-              <label className="filter-select">
-                <span>Status</span>
-                <select defaultValue={selectedStatus ?? ""} name="status">
-                  <option value="">All statuses</option>
-                  {requestStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {capitalize(status)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="filter-select">
-                <span>Category</span>
-                <select defaultValue={selectedCategory} name="category">
-                  <option value="">All categories</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button className="button button-secondary" type="submit">
-                Filter
-              </button>
-              {query || selectedStatus || selectedCategory ? (
-                <Link className="clear-filter-link" href="/requests">
-                  Clear filters
-                </Link>
-              ) : null}
+                <label className="search-field">
+                  <span className="sr-only">Search requests</span>
+                  <Search />
+                  <input
+                    className="input"
+                    defaultValue={searchParams.q ?? ""}
+                    name="q"
+                    placeholder="Search code, requester, or item"
+                    type="search"
+                  />
+                </label>
+                <label className="filter-select">
+                  <span>Status</span>
+                  <select defaultValue={selectedStatus ?? ""} name="status">
+                    <option value="">All statuses</option>
+                    {requestStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {capitalize(status)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="filter-select">
+                  <span>Category</span>
+                  <select defaultValue={selectedCategory} name="category">
+                    <option value="">All categories</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="button button-secondary" type="submit">
+                  Filter
+                </button>
+                {query || selectedStatus || selectedCategory ? (
+                  <Link className="clear-filter-link" href="/requests">
+                    Clear filters
+                  </Link>
+                ) : null}
               </DataToolbar>
             </form>
 
@@ -170,7 +170,9 @@ export async function RequestsWorkspace({
               <EmptyState
                 action={
                   !isAdmin ? (
-                    <RequestCreateModalButton requesterName={currentUser.name} />
+                    <RequestCreateModalButton
+                      requesterName={currentUser.name}
+                    />
                   ) : null
                 }
               >
@@ -180,68 +182,80 @@ export async function RequestsWorkspace({
               </EmptyState>
             ) : (
               <DataTable className="requests-table">
-                  <thead>
-                    <tr>
-                      <th className="col-code">Request</th>
-                      {isAdmin ? <th className="col-person">Requester</th> : null}
-                      <th className="col-items">Items</th>
-                      <th className="col-number">Quantity</th>
-                      <th className="col-status">Status</th>
-                      {isAdmin ? <th className="col-stock hide-md">Stock</th> : null}
-                      <th className="col-date hide-md">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagedRequests.map((request) => {
-                      const totalQuantity = request.items.reduce(
-                        (sum, item) => sum + item.requestedQuantity,
-                        0,
+                <thead>
+                  <tr>
+                    <th className="col-code">Request</th>
+                    {isAdmin ? <th className="col-person">Requester</th> : null}
+                    <th className="col-items">Items</th>
+                    <th className="col-number">Quantity</th>
+                    <th className="col-status">Status</th>
+                    {isAdmin ? (
+                      <th className="col-stock hide-md">Stock</th>
+                    ) : null}
+                    <th className="col-date hide-md">Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedRequests.map((request) => {
+                    const totalQuantity = request.items.reduce(
+                      (sum, item) => sum + item.requestedQuantity,
+                      0,
+                    );
+                    const canFulfill =
+                      request.status === "approved" &&
+                      request.items.every(
+                        (item) =>
+                          item.availableQuantity >= item.requestedQuantity,
                       );
-                      const canFulfill =
-                        request.status === "approved" &&
-                        request.items.every(
-                          (item) =>
-                            item.availableQuantity >= item.requestedQuantity,
-                        );
-                      return (
-                        <ClickableRow
-                          href={`/requests/${request.id}`}
-                          key={request.id}
-                          selected={selectedRequestId === request.id}
+                    return (
+                      <ClickableRow
+                        href={`/requests/${request.id}`}
+                        key={request.id}
+                        selected={selectedRequestId === request.id}
+                      >
+                        <td
+                          className="mono-cell truncate-cell"
+                          title={request.requestCode}
                         >
-                          <td className="mono-cell truncate-cell" title={request.requestCode}>
-                            {request.requestCode}
-                          </td>
-                          {isAdmin ? (
-                            <td className="truncate-cell" title={request.requesterName}>
-                              {request.requesterName}
-                            </td>
-                          ) : null}
+                          {request.requestCode}
+                        </td>
+                        {isAdmin ? (
                           <td
                             className="truncate-cell"
-                            title={request.items
-                              .map((item) => item.itemName)
-                              .join(", ")}
+                            title={request.requesterName}
                           >
-                            {request.items.map((item) => item.itemName).join(", ")}
+                            {request.requesterName}
                           </td>
-                          <td className="numeric-cell">{totalQuantity}</td>
-                          <td>
-                            <StatusBadge status={request.status} />
+                        ) : null}
+                        <td
+                          className="truncate-cell"
+                          title={request.items
+                            .map((item) => item.itemName)
+                            .join(", ")}
+                        >
+                          {request.items
+                            .map((item) => item.itemName)
+                            .join(", ")}
+                        </td>
+                        <td className="numeric-cell">{totalQuantity}</td>
+                        <td>
+                          <StatusBadge status={request.status} />
+                        </td>
+                        {isAdmin ? (
+                          <td className="hide-md">
+                            <StockSummary
+                              canFulfill={canFulfill}
+                              status={request.status}
+                            />
                           </td>
-                          {isAdmin ? (
-                            <td className="hide-md">
-                              <StockSummary
-                                canFulfill={canFulfill}
-                                status={request.status}
-                              />
-                            </td>
-                          ) : null}
-                          <td className="hide-md">{formatDate(request.createdAt)}</td>
-                        </ClickableRow>
-                      );
-                    })}
-                  </tbody>
+                        ) : null}
+                        <td className="hide-md">
+                          {formatDate(request.createdAt)}
+                        </td>
+                      </ClickableRow>
+                    );
+                  })}
+                </tbody>
               </DataTable>
             )}
             {requestResult.totalCount > pageSize ? (

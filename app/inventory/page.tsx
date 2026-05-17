@@ -17,9 +17,6 @@ export default async function InventoryPage({
   ]);
 
   return (
-    <InventoryWorkspace
-      currentUser={currentUser}
-      searchParams={params ?? {}}
-    />
+    <InventoryWorkspace currentUser={currentUser} searchParams={params ?? {}} />
   );
 }

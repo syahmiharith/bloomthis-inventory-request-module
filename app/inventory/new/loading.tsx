@@ -1,4 +1,7 @@
-import { ModalSkeleton, WorkspaceTableSkeleton } from "@/components/ui/Skeleton";
+import {
+  ModalSkeleton,
+  WorkspaceTableSkeleton,
+} from "@/components/ui/Skeleton";
 
 export default function NewInventoryItemLoading() {
   return (

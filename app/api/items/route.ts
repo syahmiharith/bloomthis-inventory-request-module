@@ -16,11 +16,7 @@ export async function GET(request: Request) {
       ...filters,
       page: Number(url.searchParams.get("page") ?? "1"),
       q: url.searchParams.get("q") ?? undefined,
-      stock: (url.searchParams.get("stock") ?? "") as
-        | "in"
-        | "low"
-        | "out"
-        | "",
+      stock: (url.searchParams.get("stock") ?? "") as "in" | "low" | "out" | "",
     });
     return NextResponse.json({
       items: result.rows.map((item) => ({

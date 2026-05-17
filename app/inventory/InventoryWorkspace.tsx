@@ -40,11 +40,10 @@ export async function InventoryWorkspace({
 }) {
   const query = searchParams.q?.trim() ?? "";
   const selectedCategory = searchParams.category?.trim() ?? "";
-  const selectedStock: "" | (typeof stockFilters)[number] = stockFilters.includes(
-    searchParams.stock as (typeof stockFilters)[number],
-  )
-    ? (searchParams.stock as (typeof stockFilters)[number])
-    : "";
+  const selectedStock: "" | (typeof stockFilters)[number] =
+    stockFilters.includes(searchParams.stock as (typeof stockFilters)[number])
+      ? (searchParams.stock as (typeof stockFilters)[number])
+      : "";
   const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
   const itemResult = await listItems({
     category: selectedCategory,
@@ -99,117 +98,120 @@ export async function InventoryWorkspace({
           <section className="panel inventory-control-panel">
             <form action="/inventory">
               <DataToolbar>
-              <label className="search-field">
-                <span className="sr-only">Search inventory</span>
-                <Search />
-                <input
-                  className="input"
-                  defaultValue={query}
-                  name="q"
-                  placeholder="Search by item name or SKU"
-                  type="search"
-                />
-              </label>
-              <label className="filter-select">
-                <span>Category</span>
-                <select defaultValue={selectedCategory} name="category">
-                  <option value="">All categories</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="filter-select">
-                <span>Stock</span>
-                <select defaultValue={selectedStock} name="stock">
-                  <option value="">All stock</option>
-                  <option value="in">In stock</option>
-                  <option value="low">Low stock</option>
-                  <option value="out">Out of stock</option>
-                </select>
-              </label>
-              <button className="button button-secondary" type="submit">
-                Filter
-              </button>
-              {query || selectedCategory || selectedStock ? (
-                <Link className="clear-filter-link" href="/inventory">
-                  Clear filters
-                </Link>
-              ) : null}
+                <label className="search-field">
+                  <span className="sr-only">Search inventory</span>
+                  <Search />
+                  <input
+                    className="input"
+                    defaultValue={query}
+                    name="q"
+                    placeholder="Search by item name or SKU"
+                    type="search"
+                  />
+                </label>
+                <label className="filter-select">
+                  <span>Category</span>
+                  <select defaultValue={selectedCategory} name="category">
+                    <option value="">All categories</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="filter-select">
+                  <span>Stock</span>
+                  <select defaultValue={selectedStock} name="stock">
+                    <option value="">All stock</option>
+                    <option value="in">In stock</option>
+                    <option value="low">Low stock</option>
+                    <option value="out">Out of stock</option>
+                  </select>
+                </label>
+                <button className="button button-secondary" type="submit">
+                  Filter
+                </button>
+                {query || selectedCategory || selectedStock ? (
+                  <Link className="clear-filter-link" href="/inventory">
+                    Clear filters
+                  </Link>
+                ) : null}
               </DataToolbar>
             </form>
 
             {itemResult.totalCount === 0 ? (
               <EmptyState
-                action={
-                  isAdmin ? (
-                    <InventoryCreateModalButton />
-                  ) : null
-                }
+                action={isAdmin ? <InventoryCreateModalButton /> : null}
               >
                 No inventory items match this view.
               </EmptyState>
             ) : (
               <DataTable className="inventory-table">
-                  <thead>
-                    <tr>
-                      <th className="col-item">Item</th>
-                      {isAdmin ? <th className="col-code hide-md">SKU</th> : null}
-                      <th className="col-category">Category</th>
-                      <th className="col-number">Available</th>
-                      {isAdmin ? <th className="col-number hide-md">Low-stock threshold</th> : null}
-                      <th className="col-status">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagedItems.map((item) => {
-                      const status = stockStatusFromQuantities(
-                        item.quantityOnHand,
-                        item.quantityReserved,
-                        item.reorderPoint,
-                      );
-                      return (
-                        <ClickableRow
-                          className={
-                            status === "Out of Stock"
-                              ? "is-out"
-                              : status === "Low Stock"
-                                ? "is-low"
-                            : undefined
-                          }
-                          href={`/inventory/${item.id}`}
-                          key={item.id}
-                          selected={selectedItemId === item.id}
-                        >
-                          <td className="truncate-cell" title={item.name}>
-                            <strong>{item.name}</strong>
-                            {!isAdmin ? (
-                              <span className="muted"> {item.sku}</span>
-                            ) : null}
-                          </td>
-                          {isAdmin ? (
-                            <td className="mono-cell truncate-cell hide-md" title={item.sku}>
-                              {item.sku}
-                            </td>
+                <thead>
+                  <tr>
+                    <th className="col-item">Item</th>
+                    {isAdmin ? <th className="col-code hide-md">SKU</th> : null}
+                    <th className="col-category">Category</th>
+                    <th className="col-number">Available</th>
+                    {isAdmin ? (
+                      <th className="col-number hide-md">
+                        Low-stock threshold
+                      </th>
+                    ) : null}
+                    <th className="col-status">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedItems.map((item) => {
+                    const status = stockStatusFromQuantities(
+                      item.quantityOnHand,
+                      item.quantityReserved,
+                      item.reorderPoint,
+                    );
+                    return (
+                      <ClickableRow
+                        className={
+                          status === "Out of Stock"
+                            ? "is-out"
+                            : status === "Low Stock"
+                              ? "is-low"
+                              : undefined
+                        }
+                        href={`/inventory/${item.id}`}
+                        key={item.id}
+                        selected={selectedItemId === item.id}
+                      >
+                        <td className="truncate-cell" title={item.name}>
+                          <strong>{item.name}</strong>
+                          {!isAdmin ? (
+                            <span className="muted"> {item.sku}</span>
                           ) : null}
-                          <td className="truncate-cell" title={item.category}>
-                            {item.category}
+                        </td>
+                        {isAdmin ? (
+                          <td
+                            className="mono-cell truncate-cell hide-md"
+                            title={item.sku}
+                          >
+                            {item.sku}
                           </td>
-                          <td className="numeric-cell">{item.available}</td>
-                          {isAdmin ? (
-                            <td className="numeric-cell hide-md">
-                              {item.reorderPoint}
-                            </td>
-                          ) : null}
-                          <td>
-                            <StockBadge status={status} />
+                        ) : null}
+                        <td className="truncate-cell" title={item.category}>
+                          {item.category}
+                        </td>
+                        <td className="numeric-cell">{item.available}</td>
+                        {isAdmin ? (
+                          <td className="numeric-cell hide-md">
+                            {item.reorderPoint}
                           </td>
-                        </ClickableRow>
-                      );
-                    })}
-                  </tbody>
+                        ) : null}
+                        <td>
+                          <StockBadge status={status} />
+                        </td>
+                      </ClickableRow>
+                    );
+                  })}
+                </tbody>
               </DataTable>
             )}
             {itemResult.totalCount > pageSize ? (

@@ -13,7 +13,10 @@ type NewInventoryItemPageProps = {
 export default async function NewInventoryItemPage({
   searchParams,
 }: NewInventoryItemPageProps) {
-  const [currentUser, params] = await Promise.all([requireAdmin(), searchParams]);
+  const [currentUser, params] = await Promise.all([
+    requireAdmin(),
+    searchParams,
+  ]);
 
   return (
     <InventoryWorkspace

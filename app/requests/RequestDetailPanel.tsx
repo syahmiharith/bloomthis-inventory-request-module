@@ -123,7 +123,10 @@ export function RequestDetailPanel({
         ) : (
           <div className="timeline-list panel-audit-list">
             {request.requestHistory.map((entry) => (
-              <article className={`timeline-item ${timelineTone(entry.action)}`} key={entry.id}>
+              <article
+                className={`timeline-item ${timelineTone(entry.action)}`}
+                key={entry.id}
+              >
                 <span className="timeline-dot" />
                 <div>
                   <strong>{humanize(entry.action)}</strong>

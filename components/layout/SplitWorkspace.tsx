@@ -13,7 +13,5 @@ export function SplitWorkspace({
     title: string;
   };
 }) {
-  return (
-    <WorkspaceLayout sidePanel={panel}>{children}</WorkspaceLayout>
-  );
+  return <WorkspaceLayout sidePanel={panel}>{children}</WorkspaceLayout>;
 }

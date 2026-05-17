@@ -5,6 +5,7 @@
 Build a simple Inventory Request Module for an internship technical assignment.
 
 Stack:
+
 - Next.js App Router
 - TypeScript
 - Supabase Postgres as the hosted backend database
@@ -61,6 +62,7 @@ Do not implement full Supabase Auth unless explicitly requested after the baseli
 ## Pages
 
 Required routes:
+
 - /
 - /inventory
 - /inventory/new
@@ -71,6 +73,7 @@ Required routes:
 ## Testing priority
 
 Prioritize:
+
 - unit tests for stock/status rules
 - integration tests for request creation and fulfillment
 - Playwright smoke tests for key routes and critical flows

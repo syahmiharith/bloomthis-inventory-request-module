@@ -34,10 +34,7 @@ export function DetailSidePanel({
     localStorage.setItem(STORAGE_KEY, String(width));
   }, [width]);
 
-  const style = useMemo(
-    () => ({ flexBasis: width, width }),
-    [width],
-  );
+  const style = useMemo(() => ({ flexBasis: width, width }), [width]);
 
   function startResize(event: React.PointerEvent<HTMLDivElement>) {
     if (window.matchMedia("(max-width: 760px)").matches) {

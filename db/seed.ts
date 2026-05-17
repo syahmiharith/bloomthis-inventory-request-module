@@ -203,13 +203,19 @@ async function seed() {
               ? 10
               : index === 2
                 ? 5
-            : index % 9 === 0 && index % 4 !== 0
-              ? 0
-              : index % 5 === 0
-                ? 8 + index
-                : 45 + index * 3;
+                : index % 9 === 0 && index % 4 !== 0
+                  ? 0
+                  : index % 5 === 0
+                    ? 8 + index
+                    : 45 + index * 3;
         const quantityReserved =
-          quantityOnHand === 0 ? 0 : index === 2 ? 0 : index % 4 === 0 ? 5 : index % 3;
+          quantityOnHand === 0
+            ? 0
+            : index === 2
+              ? 0
+              : index % 4 === 0
+                ? 5
+                : index % 3;
         return {
           name,
           sku,

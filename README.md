@@ -247,12 +247,13 @@ npm run db:seed
 
 9. Deploy from Vercel.
 10. Verify:
-   - `/`
-   - `/inventory`
-   - `/inventory/new`
-   - `/requests`
-   - `/requests/new`
-   - `/requests/[id]`
+
+- `/`
+- `/inventory`
+- `/inventory/new`
+- `/requests`
+- `/requests/new`
+- `/requests/[id]`
 
 To verify a Vercel deployment with Playwright after deployment:
 

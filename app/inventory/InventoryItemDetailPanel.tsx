@@ -86,7 +86,10 @@ export function InventoryItemDetailFooter({
   }
 
   return (
-    <a className="button button-primary" href={`/requests/new?itemId=${item.id}`}>
+    <a
+      className="button button-primary"
+      href={`/requests/new?itemId=${item.id}`}
+    >
       Request Item
     </a>
   );

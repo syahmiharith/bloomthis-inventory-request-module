@@ -46,7 +46,9 @@ export function StatusActionForm({
 
     const detail =
       status === "fulfilled" && fulfillPreview ? `\n\n${fulfillPreview}` : "";
-    const confirmed = window.confirm(`Confirm ${label.toLowerCase()}?${detail}`);
+    const confirmed = window.confirm(
+      `Confirm ${label.toLowerCase()}?${detail}`,
+    );
     if (!confirmed) {
       event.preventDefault();
     }

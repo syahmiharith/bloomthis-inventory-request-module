@@ -37,144 +37,153 @@ export async function getDashboardSummary(
   return getDashboardSummaryCached(viewer.id, viewer.role);
 }
 
-const getDashboardSummaryCached = cache(async function getDashboardSummaryCached(
-  viewerId: string,
-  viewerRole: User["role"],
-): Promise<DashboardSummary> {
-  const scopeCondition =
-    viewerRole === "employee"
-      ? eq(inventoryRequests.requesterId, viewerId)
-      : undefined;
-  const now = new Date();
-  const currentWindowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const previousWindowStart = new Date(
-    now.getTime() - 60 * 24 * 60 * 60 * 1000,
-  );
+const getDashboardSummaryCached = cache(
+  async function getDashboardSummaryCached(
+    viewerId: string,
+    viewerRole: User["role"],
+  ): Promise<DashboardSummary> {
+    const scopeCondition =
+      viewerRole === "employee"
+        ? eq(inventoryRequests.requesterId, viewerId)
+        : undefined;
+    const now = new Date();
+    const currentWindowStart = new Date(
+      now.getTime() - 30 * 24 * 60 * 60 * 1000,
+    );
+    const previousWindowStart = new Date(
+      now.getTime() - 60 * 24 * 60 * 60 * 1000,
+    );
 
-  const rows = await db
-    .select({
-      status: inventoryRequests.status,
-      total: sql<number>`count(*)::int`,
-      currentWindow: sql<number>`count(*) filter (
+    const rows = await db
+      .select({
+        status: inventoryRequests.status,
+        total: sql<number>`count(*)::int`,
+        currentWindow: sql<number>`count(*) filter (
         where ${inventoryRequests.createdAt} >= ${currentWindowStart.toISOString()}::timestamptz
       )::int`,
-      previousWindow: sql<number>`count(*) filter (
+        previousWindow: sql<number>`count(*) filter (
         where ${inventoryRequests.createdAt} >= ${previousWindowStart.toISOString()}::timestamptz
         and ${inventoryRequests.createdAt} < ${currentWindowStart.toISOString()}::timestamptz
       )::int`,
-    })
-    .from(inventoryRequests)
-    .where(scopeCondition)
-    .groupBy(inventoryRequests.status);
+      })
+      .from(inventoryRequests)
+      .where(scopeCondition)
+      .groupBy(inventoryRequests.status);
 
-  const initial: DashboardSummary = {
-    all: { count: 0, trendPercent: 0 },
-    pending: { count: 0, trendPercent: 0 },
-    approved: { count: 0, trendPercent: 0 },
-    fulfilled: { count: 0, trendPercent: 0 },
-    rejected: { count: 0, trendPercent: 0 },
-  };
+    const initial: DashboardSummary = {
+      all: { count: 0, trendPercent: 0 },
+      pending: { count: 0, trendPercent: 0 },
+      approved: { count: 0, trendPercent: 0 },
+      fulfilled: { count: 0, trendPercent: 0 },
+      rejected: { count: 0, trendPercent: 0 },
+    };
 
-  const totals = rows.reduce(
-    (result, row) => ({
-      currentWindow: result.currentWindow + row.currentWindow,
-      previousWindow: result.previousWindow + row.previousWindow,
-      total: result.total + row.total,
-    }),
-    { currentWindow: 0, previousWindow: 0, total: 0 },
-  );
+    const totals = rows.reduce(
+      (result, row) => ({
+        currentWindow: result.currentWindow + row.currentWindow,
+        previousWindow: result.previousWindow + row.previousWindow,
+        total: result.total + row.total,
+      }),
+      { currentWindow: 0, previousWindow: 0, total: 0 },
+    );
 
-  const summary = rows.reduce((result, row) => {
-    const trendPercent = calculateTrend(row.currentWindow, row.previousWindow);
-    result[row.status] = { count: row.total, trendPercent };
-    return result;
-  }, initial);
+    const summary = rows.reduce((result, row) => {
+      const trendPercent = calculateTrend(
+        row.currentWindow,
+        row.previousWindow,
+      );
+      result[row.status] = { count: row.total, trendPercent };
+      return result;
+    }, initial);
 
-  summary.all = {
-    count: totals.total,
-    trendPercent: calculateTrend(totals.currentWindow, totals.previousWindow),
-  };
+    summary.all = {
+      count: totals.total,
+      trendPercent: calculateTrend(totals.currentWindow, totals.previousWindow),
+    };
 
-  return summary;
-});
+    return summary;
+  },
+);
 
 export async function getDashboardPageData(viewer: User) {
   return getDashboardPageDataCached(viewer.id, viewer.role);
 }
 
-const getDashboardPageDataCached = cache(async function getDashboardPageDataCached(
-  viewerId: string,
-  viewerRole: User["role"],
-) {
-  const requestScope =
-    viewerRole === "employee"
-      ? eq(inventoryRequests.requesterId, viewerId)
-      : undefined;
+const getDashboardPageDataCached = cache(
+  async function getDashboardPageDataCached(
+    viewerId: string,
+    viewerRole: User["role"],
+  ) {
+    const requestScope =
+      viewerRole === "employee"
+        ? eq(inventoryRequests.requesterId, viewerId)
+        : undefined;
 
-  const [inventoryTotals, requestTotals, recentRequests] = await Promise.all([
-    db
-      .select({
-        totalItems: sql<number>`count(*)::int`,
-        availableItems: sql<number>`count(*) filter (
+    const [inventoryTotals, requestTotals, recentRequests] = await Promise.all([
+      db
+        .select({
+          totalItems: sql<number>`count(*)::int`,
+          availableItems: sql<number>`count(*) filter (
           where ${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} > 0
         )::int`,
-        lowStockItems: sql<number>`count(*) filter (
+          lowStockItems: sql<number>`count(*) filter (
           where ${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} <= ${inventoryItems.reorderPoint}
         )::int`,
-      })
-      .from(inventoryItems),
-    db
-      .select({
-        totalRequests: sql<number>`count(*)::int`,
-        pendingRequests: sql<number>`count(*) filter (
+        })
+        .from(inventoryItems),
+      db
+        .select({
+          totalRequests: sql<number>`count(*)::int`,
+          pendingRequests: sql<number>`count(*) filter (
           where ${inventoryRequests.status} = 'pending'
         )::int`,
-        fulfilledRequests: sql<number>`count(*) filter (
+          fulfilledRequests: sql<number>`count(*) filter (
           where ${inventoryRequests.status} = 'fulfilled'
         )::int`,
-      })
-      .from(inventoryRequests)
-      .where(requestScope),
-    db
-      .select({
-        id: inventoryRequests.id,
-        requestCode: inventoryRequests.requestCode,
-        requesterName: users.name,
-        status: inventoryRequests.status,
-        quantityRequested: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`,
-        createdAt: inventoryRequests.createdAt,
-        itemNames: sql<string>`coalesce(string_agg(${inventoryItems.name}, ', ' order by ${inventoryItems.name}), 'No items')`,
-      })
-      .from(inventoryRequests)
-      .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
-      .leftJoin(
-        inventoryRequestItems,
-        eq(inventoryRequestItems.requestId, inventoryRequests.id),
-      )
-      .leftJoin(
-        inventoryItems,
-        eq(inventoryRequestItems.itemId, inventoryItems.id),
-      )
-      .where(requestScope)
-      .groupBy(inventoryRequests.id, users.name)
-      .orderBy(desc(inventoryRequests.createdAt))
-      .limit(5),
-  ]);
+        })
+        .from(inventoryRequests)
+        .where(requestScope),
+      db
+        .select({
+          id: inventoryRequests.id,
+          requestCode: inventoryRequests.requestCode,
+          requesterName: users.name,
+          status: inventoryRequests.status,
+          quantityRequested: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`,
+          createdAt: inventoryRequests.createdAt,
+          itemNames: sql<string>`coalesce(string_agg(${inventoryItems.name}, ', ' order by ${inventoryItems.name}), 'No items')`,
+        })
+        .from(inventoryRequests)
+        .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+        .leftJoin(
+          inventoryRequestItems,
+          eq(inventoryRequestItems.requestId, inventoryRequests.id),
+        )
+        .leftJoin(
+          inventoryItems,
+          eq(inventoryRequestItems.itemId, inventoryItems.id),
+        )
+        .where(requestScope)
+        .groupBy(inventoryRequests.id, users.name)
+        .orderBy(desc(inventoryRequests.createdAt))
+        .limit(5),
+    ]);
 
-  return {
-    inventory: {
-      totalItems: inventoryTotals[0]?.totalItems ?? 0,
-      availableItems: inventoryTotals[0]?.availableItems ?? 0,
-      lowStockItems: inventoryTotals[0]?.lowStockItems ?? 0,
-    },
-    requests: {
-      totalRequests: requestTotals[0]?.totalRequests ?? 0,
-      pendingRequests: requestTotals[0]?.pendingRequests ?? 0,
-      fulfilledRequests: requestTotals[0]?.fulfilledRequests ?? 0,
-    },
-    recentRequests,
-  };
-});
+    return {
+      inventory: {
+        totalItems: inventoryTotals[0]?.totalItems ?? 0,
+        availableItems: inventoryTotals[0]?.availableItems ?? 0,
+        lowStockItems: inventoryTotals[0]?.lowStockItems ?? 0,
+      },
+      requests: {
+        totalRequests: requestTotals[0]?.totalRequests ?? 0,
+        pendingRequests: requestTotals[0]?.pendingRequests ?? 0,
+        fulfilledRequests: requestTotals[0]?.fulfilledRequests ?? 0,
+      },
+      recentRequests,
+    };
+  },
+);
 
 export async function getUrgentDashboard(viewer: User) {
   return getUrgentDashboardCached(viewer.id, viewer.role);

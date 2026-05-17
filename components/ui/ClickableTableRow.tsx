@@ -20,7 +20,9 @@ export function ClickableTableRow({
   const router = useRouter();
 
   function shouldIgnoreNavigation(target: EventTarget | null) {
-    return target instanceof Element && Boolean(target.closest(interactiveSelector));
+    return (
+      target instanceof Element && Boolean(target.closest(interactiveSelector))
+    );
   }
 
   function navigate() {

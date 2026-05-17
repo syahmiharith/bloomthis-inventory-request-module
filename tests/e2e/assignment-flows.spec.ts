@@ -59,11 +59,15 @@ test("filters inventory and request workspaces", async ({ page }) => {
 
   await page.goto("/inventory?q=A4&stock=in");
   await expect(page.getByTestId("inventory-page")).toBeVisible();
-  await expect(page.getByRole("cell", { name: /A4 Copy Paper/i })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: /A4 Copy Paper/i }),
+  ).toBeVisible();
 
   await page.goto("/requests?status=pending&q=REQ");
   await expect(page.getByTestId("requests-page")).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Pending" }).first()).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Pending" }).first(),
+  ).toBeVisible();
 });
 
 test("employee creates request and cannot see admin actions", async ({
@@ -96,7 +100,9 @@ test("admin approves and fulfills a request", async ({ page }) => {
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Fulfill" }).click();
   await expect(page.getByText("Fulfilled").first()).toBeVisible();
-  await expect(page.getByText("Request Fulfilled", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Request Fulfilled", { exact: true }),
+  ).toBeVisible();
 });
 
 test("insufficient stock blocks fulfillment", async ({ page }) => {
@@ -117,17 +123,26 @@ test("insufficient stock blocks fulfillment", async ({ page }) => {
   await expect(page.getByText("Approved").first()).toBeVisible();
 });
 
-test("core routes respond within local performance budget", async ({ page }) => {
-  const routes = ["/", "/inventory", "/requests", "/inventory/new", "/requests/new"];
+test("core routes respond within local performance budget", async ({
+  page,
+}) => {
+  const routes = [
+    "/",
+    "/inventory",
+    "/requests",
+    "/inventory/new",
+    "/requests/new",
+  ];
 
   for (const route of routes) {
     const startedAt = Date.now();
     const response = await page.goto(route, { waitUntil: "domcontentloaded" });
     const duration = Date.now() - startedAt;
 
-    expect(response?.status(), `${route} should load successfully`).toBeLessThan(
-      500,
-    );
+    expect(
+      response?.status(),
+      `${route} should load successfully`,
+    ).toBeLessThan(500);
     expect(duration, `${route} exceeded 10s local route budget`).toBeLessThan(
       10_000,
     );
