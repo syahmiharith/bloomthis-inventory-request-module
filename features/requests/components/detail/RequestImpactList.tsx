@@ -11,13 +11,18 @@ export function RequestImpactList({
       <div className="detail-section-header">
         <div>
           <h3>Inventory impact</h3>
-          <p>Current stock and fulfillment preview.</p>
+          <p>
+            {request.status === "fulfilled"
+              ? "Issued quantities and current stock position."
+              : "Current stock and fulfillment preview."}
+          </p>
         </div>
       </div>
       <div className="request-impact-list">
         {request.items.map((item) => {
+          const isFulfilled = request.status === "fulfilled";
           const after = item.availableQuantity - item.requestedQuantity;
-          const itemIsShort = after < 0;
+          const itemIsShort = !isFulfilled && after < 0;
           return (
             <article
               className={`request-impact-card ${itemIsShort ? "is-short" : ""}`}
@@ -32,13 +37,15 @@ export function RequestImpactList({
               <div className="request-impact-numbers">
                 <ImpactNumber label="Current" value={item.availableQuantity} />
                 <ImpactNumber
-                  label="Requested"
+                  label={isFulfilled ? "Issued" : "Requested"}
                   value={item.requestedQuantity}
                 />
                 <ImpactNumber
-                  label="After"
+                  label={isFulfilled ? "Status" : "After"}
                   value={
-                    itemIsShort ? (
+                    isFulfilled ? (
+                      <span className="badge badge-stock-issued">Issued</span>
+                    ) : itemIsShort ? (
                       <span className="badge badge-stock-insufficient">
                         Short
                       </span>

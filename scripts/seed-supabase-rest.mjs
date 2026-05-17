@@ -36,6 +36,7 @@ async function main() {
   await ensureWarehouses();
   const items = await ensureItems();
   const requests = await ensureRequests(users, items);
+  await ensureSeedStockConsistency();
   await ensureHistory(requests);
 
   const counts = await Promise.all([
@@ -293,13 +294,83 @@ async function ensureHistory(requests) {
   }
 
   if (rows.length > 0) {
-    await insert("request_history", rows);
+    const historyRows = rows.map((row) => ({
+      request_id: row.request_id,
+      actor_name: row.actor_name,
+      actor_role: row.actor_role,
+      action: row.action,
+      note: row.note ?? null,
+      from_status: row.from_status ?? null,
+      to_status: row.to_status ?? null,
+      metadata: row.metadata ?? {},
+      created_at: row.created_at ?? startedAt.toISOString(),
+    }));
+    await insert("request_history", historyRows);
     await insert(
       "audit_logs",
-      rows.map(({ actor_role: _actorRole, note: _note, ...row }) => ({
+      historyRows.map(({ actor_role: _actorRole, note: _note, ...row }) => ({
+        item_id: null,
         ...row,
       })),
     );
+  }
+}
+
+async function ensureSeedStockConsistency() {
+  const [items, requests, requestItems] = await Promise.all([
+    select(
+      "inventory_items",
+      "id,quantity_on_hand,quantity_reserved,reorder_point",
+    ),
+    select("inventory_requests", "id,status"),
+    select(
+      "inventory_request_items",
+      "request_id,item_id,quantity_requested,quantity_approved",
+    ),
+  ]);
+  const requestsById = new Map(
+    requests.map((request) => [request.id, request]),
+  );
+  const fulfilledStockByItemId = new Map();
+
+  for (const line of requestItems) {
+    const request = requestsById.get(line.request_id);
+    if (request?.status !== "fulfilled") {
+      continue;
+    }
+    const quantityApproved =
+      line.quantity_approved ?? line.quantity_requested ?? 0;
+    const current = fulfilledStockByItemId.get(line.item_id) ?? {
+      largestLineQuantity: 0,
+      totalQuantity: 0,
+    };
+    fulfilledStockByItemId.set(line.item_id, {
+      largestLineQuantity: Math.max(
+        current.largestLineQuantity,
+        quantityApproved,
+      ),
+      totalQuantity: current.totalQuantity + quantityApproved,
+    });
+  }
+
+  for (const item of items) {
+    const fulfilledStock = fulfilledStockByItemId.get(item.id);
+    if (!fulfilledStock) {
+      continue;
+    }
+    const minimumPostIssueAvailability = Math.max(
+      fulfilledStock.largestLineQuantity,
+      item.reorder_point,
+    );
+    const requiredOnHandBeforeIssue =
+      fulfilledStock.totalQuantity +
+      item.quantity_reserved +
+      minimumPostIssueAvailability;
+    if (item.quantity_on_hand < requiredOnHandBeforeIssue) {
+      await updateById("inventory_items", item.id, {
+        quantity_on_hand: requiredOnHandBeforeIssue + 3,
+      });
+    }
   }
 }
 
@@ -313,6 +384,14 @@ async function insert(table, rows) {
   return request(table, {
     body: JSON.stringify(rows),
     method: "POST",
+  });
+}
+
+async function updateById(table, id, values) {
+  return request(table, {
+    body: JSON.stringify(values),
+    method: "PATCH",
+    searchParams: { id: `eq.${id}` },
   });
 }
 
@@ -338,7 +417,10 @@ async function request(table, init = {}) {
     headers,
   });
   if (!response.ok) {
-    throw new Error(`Supabase ${table} request failed: ${response.status}`);
+    const detail = await response.text();
+    throw new Error(
+      `Supabase ${table} request failed: ${response.status} ${detail}`,
+    );
   }
   return response.status === 204 ? [] : response.json();
 }

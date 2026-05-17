@@ -290,23 +290,44 @@ async function seed() {
     });
   });
 
-  const fulfilledQuantityByItemId = new Map<string, number>();
+  const fulfilledStockByItemId = new Map<
+    string,
+    { largestLineQuantity: number; totalQuantity: number }
+  >();
   for (const line of requestItemRows) {
     const request = requests.find((entry) => entry.id === line.requestId)!;
     if (request.status !== "fulfilled") {
       continue;
     }
     const quantityApproved = line.quantityApproved ?? line.quantityRequested;
-    fulfilledQuantityByItemId.set(
-      line.itemId,
-      (fulfilledQuantityByItemId.get(line.itemId) ?? 0) + quantityApproved,
-    );
+    const current = fulfilledStockByItemId.get(line.itemId) ?? {
+      largestLineQuantity: 0,
+      totalQuantity: 0,
+    };
+    fulfilledStockByItemId.set(line.itemId, {
+      largestLineQuantity: Math.max(
+        current.largestLineQuantity,
+        quantityApproved,
+      ),
+      totalQuantity: current.totalQuantity + quantityApproved,
+    });
   }
 
   for (const item of items) {
-    const fulfilledQuantity = fulfilledQuantityByItemId.get(item.id) ?? 0;
-    if (fulfilledQuantity > 0 && item.quantityOnHand < fulfilledQuantity) {
-      const replenishedQuantity = fulfilledQuantity + item.reorderPoint + 3;
+    const fulfilledStock = fulfilledStockByItemId.get(item.id);
+    if (!fulfilledStock) {
+      continue;
+    }
+    const minimumPostIssueAvailability = Math.max(
+      fulfilledStock.largestLineQuantity,
+      item.reorderPoint,
+    );
+    const requiredOnHandBeforeIssue =
+      fulfilledStock.totalQuantity +
+      item.quantityReserved +
+      minimumPostIssueAvailability;
+    if (item.quantityOnHand < requiredOnHandBeforeIssue) {
+      const replenishedQuantity = requiredOnHandBeforeIssue + 3;
       item.quantityOnHand = replenishedQuantity;
       await db
         .update(inventoryItems)
