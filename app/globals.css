@@ -1370,6 +1370,10 @@ tbody tr.selected {
   gap: 18px;
 }
 
+.dashboard-data-alert {
+  margin: -8px 0 20px;
+}
+
 .dashboard-heading p,
 .stacked-panel-header p {
   margin: 4px 0 0;

@@ -11,11 +11,50 @@ import {
 import { getCurrentUserForShell } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KpiCard, KpiGrid } from "@/components/ui/Kpi";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  getDashboardInventoryKpis,
+  getDashboardRecentRequests,
+  getDashboardRequestKpis,
+  getUrgentDashboard,
+} from "@/services/dashboard.service";
 
 export default async function HomePage() {
   const currentUser = await getCurrentUserForShell();
-  const dashboard = emptyDashboardData;
-  const urgent = emptyUrgentData;
+  const [kpis, priority, recent] = await Promise.all([
+    safeDashboardSection(
+      "dashboard:kpis",
+      async () => {
+        const [inventory, requests] = await Promise.all([
+          getDashboardInventoryKpis(currentUser),
+          getDashboardRequestKpis(currentUser),
+        ]);
+        return { inventory, requests };
+      },
+      {
+        inventory: emptyDashboardData.inventory,
+        requests: emptyDashboardData.requests,
+      },
+    ),
+    safeDashboardSection(
+      "dashboard:priority",
+      () => getUrgentDashboard(currentUser),
+      emptyUrgentData,
+    ),
+    safeDashboardSection(
+      "dashboard:recent",
+      () => getDashboardRecentRequests(currentUser),
+      emptyDashboardData.recentRequests,
+    ),
+  ]);
+  const dashboard = {
+    inventory: kpis.data.inventory,
+    recentRequests: recent.data,
+    requests: kpis.data.requests,
+  };
+  const urgent = priority.data;
+  const hasDashboardDataIssue =
+    !kpis.available || !priority.available || !recent.available;
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -32,6 +71,11 @@ export default async function HomePage() {
               : "Browse available inventory and track your demo-user requests."
           }
         />
+        {hasDashboardDataIssue ? (
+          <p className="alert alert-info dashboard-data-alert" role="status">
+            Dashboard data temporarily unavailable.
+          </p>
+        ) : null}
 
         <KpiGrid testId="dashboard-summary-cards">
           {isAdmin ? (
@@ -134,6 +178,11 @@ export default async function HomePage() {
                   </Link>
                 ))}
             </div>
+            {priority.available &&
+            urgent.priorityQueue.length === 0 &&
+            urgent.inventoryRisk.length === 0 ? (
+              <p className="empty-state">No priority actions right now.</p>
+            ) : null}
           </section>
 
           <section className="panel" data-testid="dashboard-recent-requests">
@@ -146,8 +195,31 @@ export default async function HomePage() {
               }
             />
             {dashboard.recentRequests.length === 0 ? (
-              <p className="empty-state">No requests yet.</p>
-            ) : null}
+              <p className="empty-state">
+                {recent.available
+                  ? "No requests yet."
+                  : "Recent requests temporarily unavailable."}
+              </p>
+            ) : (
+              <div className="dashboard-risk-list">
+                {dashboard.recentRequests.map((request) => (
+                  <Link
+                    className="dashboard-risk-row"
+                    href={`/requests/${request.id}`}
+                    key={request.id}
+                    title={`${request.requestCode} - ${request.itemNames}`}
+                  >
+                    <StatusBadge status={request.status} />
+                    <strong>{request.requestCode}</strong>
+                    <span>{request.requesterName}</span>
+                    <span>
+                      {request.quantityRequested} units · {request.itemNames}
+                    </span>
+                    <ArrowRight />
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
 
           <section
@@ -213,6 +285,13 @@ export default async function HomePage() {
               subtitle="Latest request and inventory events."
             />
             <div className="timeline-list">
+              {urgent.recentActivity.length === 0 ? (
+                <p className="empty-state">
+                  {priority.available
+                    ? "No recent activity yet."
+                    : "Recent activity temporarily unavailable."}
+                </p>
+              ) : null}
               {urgent.recentActivity.map((entry) => (
                 <article key={entry.id}>
                   <span className="timeline-dot" />
@@ -334,3 +413,56 @@ const emptyUrgentData = {
     requestCode: string | null;
   }>,
 };
+
+async function safeDashboardSection<T>(
+  label: "dashboard:kpis" | "dashboard:priority" | "dashboard:recent",
+  load: () => Promise<T>,
+  fallback: T,
+): Promise<{ available: boolean; data: T }> {
+  const guarded = withDashboardTiming(label, load)
+    .then((data) => ({ available: true, data }))
+    .catch((error: unknown) => {
+      logDashboardIssue(label, error);
+      return { available: false, data: fallback };
+    });
+
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutResult = new Promise<{ available: boolean; data: T }>(
+    (resolve) => {
+      timeout = setTimeout(() => {
+        logDashboardIssue(label, new Error("Dashboard section timed out"));
+        resolve({ available: false, data: fallback });
+      }, 4_000);
+    },
+  );
+
+  return Promise.race([guarded, timeoutResult]).finally(() => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  });
+}
+
+async function withDashboardTiming<T>(label: string, load: () => Promise<T>) {
+  if (process.env.NODE_ENV !== "development") {
+    return load();
+  }
+
+  const startedAt = performance.now();
+  try {
+    return await load();
+  } finally {
+    console.info(
+      `[db:${label}] ${Math.round(performance.now() - startedAt)}ms`,
+    );
+  }
+}
+
+function logDashboardIssue(label: string, error: unknown) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[db:${label}] fallback: ${message}`);
+}
