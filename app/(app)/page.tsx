@@ -357,8 +357,8 @@ function QuickAction({
   );
 }
 
-function formatDate(value: Date) {
-  return value.toLocaleDateString("en-US", {
+function formatDate(value: Date | string) {
+  return new Date(value).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
@@ -371,7 +371,7 @@ const emptyDashboardData = {
     totalItems: 0,
   },
   recentRequests: [] as Array<{
-    createdAt: Date;
+    createdAt: Date | string;
     id: string;
     itemNames: string;
     quantityRequested: number;
@@ -410,7 +410,7 @@ const emptyUrgentData = {
   }>,
   recentActivity: [] as Array<{
     action: string;
-    createdAt: Date;
+    createdAt: Date | string;
     id: string;
     requestCode: string | null;
   }>,
