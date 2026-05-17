@@ -255,7 +255,8 @@ function stockHealthExpression(
   available: SQLWrapper,
   activeDemand: SQLWrapper,
 ) {
-  const internalTarget = sql<number>`greatest(${inventoryItems.reorderPoint} * 2, ${inventoryItems.reorderPoint} + ${activeDemand})`;
+  const baselineTarget = sql<number>`greatest(250, least(300, ${inventoryItems.reorderPoint} * 2))`;
+  const internalTarget = sql<number>`greatest(${baselineTarget}, ${inventoryItems.reorderPoint} + ${activeDemand})`;
   return sql<number>`case
     when ${internalTarget} <= 0 then 100
     else least(100, greatest(0, round((${available})::numeric / nullif(${internalTarget}, 0) * 100)))::int

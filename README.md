@@ -295,7 +295,7 @@ No Docker setup is required for Vercel. Secrets must be configured in Vercel Pro
 - Demo role switching is acceptable for the assignment.
 - Supabase is the hosted PostgreSQL backend; Drizzle remains the ORM.
 - The requester is the current demo user; the requester field on the request form is read-only to match server-side scoping.
-- Inventory requests support the current line-item model, but the UI keeps creation simple with one selected item.
+- Inventory requests support one or more item lines. Creating a request never deducts stock; fulfillment validates every line server-side.
 - Approval quantity equals requested quantity.
 - Email notifications, real authentication, analytics, and multi-level approvals are intentionally out of scope.
 
@@ -304,7 +304,6 @@ No Docker setup is required for Vercel. Secrets must be configured in Vercel Pro
 - Authentication is simulated with seeded demo users and a cookie.
 - Supabase Auth is not implemented; the app intentionally uses a demo role switcher.
 - There is no payment, procurement, or supplier workflow in the assignment-facing UI.
-- Request creation currently submits one item at a time.
 - Production use would need real identity, audit retention policy, and operational monitoring.
 
 ## AI Usage

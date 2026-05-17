@@ -2,6 +2,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { StockBadge } from "@/components/ui/StockBadge";
 import { stockStatusFromQuantities } from "@/lib/inventory";
 import type { getItemById } from "@/services/item.service";
+import type { CSSProperties } from "react";
 
 type InventoryItemDetail = NonNullable<Awaited<ReturnType<typeof getItemById>>>;
 
@@ -51,7 +52,7 @@ export function InventoryItemDetailPanel({
           </div>
           <div>
             <dt>Stock health</dt>
-            <dd>{item.stockHealthPercent}% healthy</dd>
+            <dd>{item.stockHealthPercent}%</dd>
           </div>
           <div>
             <dt>On hand</dt>
@@ -91,13 +92,18 @@ export function InventoryItemDetailPanel({
         <div className="stock-health-detail">
           <span
             aria-label={`Stock health ${item.stockHealthPercent} percent`}
-            className="stock-health-meter"
+            className="stock-health-ring stock-health-ring-large"
             role="meter"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={item.stockHealthPercent}
+            style={
+              {
+                "--stock-health": `${item.stockHealthPercent * 3.6}deg`,
+              } as CSSProperties
+            }
           >
-            <span style={{ width: `${item.stockHealthPercent}%` }} />
+            <strong>{item.stockHealthPercent}%</strong>
           </span>
           <p>
             Health compares available stock with the internal operating target
@@ -156,10 +162,16 @@ export function InventoryItemDetailFooter({
   if (isAdmin) {
     return (
       <div className="item-panel-actions">
-        <a className="button button-secondary" href={`/requests?status=pending&q=${encodeURIComponent(item.sku)}`}>
+        <a
+          className="button button-compact button-panel-secondary"
+          href={`/requests?status=pending&q=${encodeURIComponent(item.sku)}`}
+        >
           View pending requests
         </a>
-        <a className="button button-primary" href={`/requests?status=approved&q=${encodeURIComponent(item.sku)}`}>
+        <a
+          className="button button-compact button-panel-primary"
+          href={`/requests?status=approved&q=${encodeURIComponent(item.sku)}`}
+        >
           Review approved requests
         </a>
       </div>
@@ -176,7 +188,7 @@ export function InventoryItemDetailFooter({
 
   return (
     <a
-      className="button button-primary"
+      className="button button-compact button-panel-primary"
       href={`/requests/new?itemId=${item.id}`}
     >
       Request Item

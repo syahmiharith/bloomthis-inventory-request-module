@@ -1442,6 +1442,8 @@ tbody tr.selected td:first-child {
   position: relative;
   z-index: 4;
   display: flex;
+  height: 100%;
+  min-height: 0;
   min-width: 360px;
   max-width: 720px;
   flex: 0 0 440px;
@@ -1470,6 +1472,7 @@ tbody tr.selected td:first-child {
 .detail-side-panel-scroll {
   min-height: 0;
   flex: 1;
+  overscroll-behavior: contain;
   overflow-y: auto;
   padding: 14px;
 }
@@ -1994,8 +1997,9 @@ th:hover .column-resize-handle,
 }
 
 .stock-health-cell {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .stock-health-topline {
@@ -2022,6 +2026,36 @@ th:hover .column-resize-handle,
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #0ea5e9, #14b8a6);
+}
+
+.stock-health-ring {
+  --stock-health: 0deg;
+  position: relative;
+  display: inline-grid;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, var(--surface) 0 58%, transparent 59%),
+    conic-gradient(#14b8a6 0 var(--stock-health), #e2e8f0 var(--stock-health) 360deg);
+  color: var(--text);
+}
+
+.stock-health-ring strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.stock-health-ring-large {
+  width: 96px;
+  height: 96px;
+}
+
+.stock-health-ring-large strong {
+  font-size: 22px;
 }
 
 .demand-cell {
@@ -2302,8 +2336,54 @@ th:hover .column-resize-handle,
 
 .item-panel-actions {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.button-panel-primary,
+.button-panel-secondary {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.button-panel-primary {
+  border-color: #1d4ed8;
+  background: #2563eb;
+  color: #fff;
+}
+
+.button-panel-primary:hover,
+.button-panel-primary:focus-visible {
+  background: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.button-panel-secondary {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.button-panel-secondary:hover,
+.button-panel-secondary:focus-visible {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1e40af;
+  transform: translateY(-1px);
 }
 
 .alert-grid,

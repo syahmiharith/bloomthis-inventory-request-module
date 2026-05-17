@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Search } from "lucide-react";
+import type { CSSProperties } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
@@ -359,12 +360,6 @@ export async function InventoryWorkspace({
                         <td className="mono-cell sku-cell" title={item.sku}>
                           {item.sku}
                         </td>
-                        <td
-                          className="truncate-cell hide-sm"
-                          title={item.category}
-                        >
-                          {item.category}
-                        </td>
                         <td className="inventory-quantity-cell">
                           <strong>{item.available}</strong>
                           <span className="cell-subtext">
@@ -430,20 +425,18 @@ function StockHealthCell({
 }) {
   return (
     <div className="stock-health-cell">
-      <div className="stock-health-topline">
-        <strong>{percent}% healthy</strong>
-        <StockBadge status={status} />
-      </div>
       <span
         aria-label={`Stock health ${percent} percent`}
-        className="stock-health-meter"
+        className="stock-health-ring"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
+        style={{ "--stock-health": `${percent * 3.6}deg` } as CSSProperties}
       >
-        <span style={{ width: `${percent}%` }} />
+        <strong>{percent}%</strong>
       </span>
+      <StockBadge status={status} />
     </div>
   );
 }
