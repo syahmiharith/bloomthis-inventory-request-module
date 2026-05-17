@@ -215,6 +215,21 @@ tests/
 `features/`, while `services/` keeps compatibility exports and cross-domain
 services.
 
+## Documentation
+
+The repository includes reviewer-facing documentation under [`docs/`](./docs/):
+
+- [Reviewer Guide](./docs/reviewer-guide.md)
+- [System Design](./docs/system-design.md)
+- [Product Features And Workflows](./docs/features-and-workflows.md)
+- [Business Rules](./docs/business-rules.md)
+- [Engineering Decisions](./docs/engineering-decisions.md)
+- [Testing Strategy](./docs/testing-strategy.md)
+- [Operations And Deployment](./docs/operations-and-deployment.md)
+
+Start with the reviewer guide for a fast technical walkthrough, then read the
+system design and business rules docs for implementation rationale.
+
 ## Getting Started
 
 ### Prerequisites
