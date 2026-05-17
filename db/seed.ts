@@ -138,7 +138,7 @@ async function seed() {
     },
   ]);
 
-  const itemDefinitions = [
+  const baseItemDefinitions = [
     ["A4 Copy Paper", "ITM-1001", "Office Supplies", "Ream"],
     ["Ballpoint Pen (Blue)", "ITM-1002", "Office Supplies", "Box"],
     ["Stapler", "ITM-1003", "Office Supplies", "Each"],
@@ -164,7 +164,33 @@ async function seed() {
     ["Envelope Pack", "ITM-1023", "Office Supplies", "Pack"],
     ["Cable Ties", "ITM-1024", "Operations", "Pack"],
     ["Inventory Clipboard", "ITM-1025", "Operations", "Each"],
+    [
+      "Extra Long Ergonomic Standing Desk Converter With Cable Management Tray",
+      "OPS-LONG-SKU-2026-ERGONOMIC-DESK-CONVERTER-XL",
+      "Operations",
+      "Each",
+    ],
   ] as const;
+
+  const generatedItemDefinitions = Array.from({ length: 96 }, (_, index) => {
+    const categories = [
+      "Office Supplies",
+      "IT Supplies",
+      "Packaging",
+      "Operations",
+      "Facilities",
+      "Marketing",
+    ];
+    const units = ["Each", "Pack", "Box", "Roll"];
+    const category = categories[index % categories.length];
+    return [
+      `${category} Standard Item ${String(index + 1).padStart(3, "0")}`,
+      `GEN-${category.slice(0, 3).toUpperCase()}-${String(index + 1).padStart(4, "0")}`,
+      category,
+      units[index % units.length],
+    ] as const;
+  });
+  const itemDefinitions = [...baseItemDefinitions, ...generatedItemDefinitions];
 
   const items = await db
     .insert(inventoryItems)
@@ -173,13 +199,17 @@ async function seed() {
         const quantityOnHand =
           index === 0
             ? 120
-            : index % 9 === 0
+            : index === 1
+              ? 10
+              : index === 2
+                ? 5
+            : index % 9 === 0 && index % 4 !== 0
               ? 0
               : index % 5 === 0
                 ? 8 + index
                 : 45 + index * 3;
         const quantityReserved =
-          quantityOnHand === 0 ? 0 : index % 4 === 0 ? 5 : index % 3;
+          quantityOnHand === 0 ? 0 : index === 2 ? 0 : index % 4 === 0 ? 5 : index % 3;
         return {
           name,
           sku,
@@ -188,7 +218,7 @@ async function seed() {
           unit,
           quantityOnHand,
           quantityReserved,
-          reorderPoint: index % 5 === 0 ? 15 : 10,
+          reorderPoint: index === 2 ? 5 : index % 5 === 0 ? 15 : 10,
         };
       }),
     )
@@ -198,7 +228,7 @@ async function seed() {
   const requests = await db
     .insert(inventoryRequests)
     .values(
-      Array.from({ length: 24 }, (_, index) => {
+      Array.from({ length: 60 }, (_, index) => {
         const status = statusCycle[index % statusCycle.length];
         const requester = employees[index % employees.length];
         const createdAt = new Date(now.getTime() - (index + 1) * 36e5 * 6);
@@ -253,6 +283,31 @@ async function seed() {
       };
     });
   });
+
+  const fulfilledQuantityByItemId = new Map<string, number>();
+  for (const line of requestItemRows) {
+    const request = requests.find((entry) => entry.id === line.requestId)!;
+    if (request.status !== "fulfilled") {
+      continue;
+    }
+    const quantityApproved = line.quantityApproved ?? line.quantityRequested;
+    fulfilledQuantityByItemId.set(
+      line.itemId,
+      (fulfilledQuantityByItemId.get(line.itemId) ?? 0) + quantityApproved,
+    );
+  }
+
+  for (const item of items) {
+    const fulfilledQuantity = fulfilledQuantityByItemId.get(item.id) ?? 0;
+    if (fulfilledQuantity > 0 && item.quantityOnHand < fulfilledQuantity) {
+      const replenishedQuantity = fulfilledQuantity + item.reorderPoint + 3;
+      item.quantityOnHand = replenishedQuantity;
+      await db
+        .update(inventoryItems)
+        .set({ quantityOnHand: replenishedQuantity })
+        .where(eq(inventoryItems.id, item.id));
+    }
+  }
 
   await db.insert(inventoryRequestItems).values(requestItemRows);
 

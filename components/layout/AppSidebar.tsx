@@ -8,8 +8,6 @@ import {
   ClipboardList,
   LayoutDashboard,
   Package,
-  PackagePlus,
-  PlusCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "@/db/schema";
@@ -30,20 +28,9 @@ const navItems = [
     icon: Package,
   },
   {
-    href: "/inventory/new",
-    label: "Add Inventory Item",
-    icon: PackagePlus,
-    adminOnly: true,
-  },
-  {
     href: "/requests",
     label: "Requests",
     icon: ClipboardList,
-  },
-  {
-    href: "/requests/new",
-    label: "New Request",
-    icon: PlusCircle,
   },
 ];
 
@@ -53,11 +40,11 @@ function isActiveRoute(pathname: string, href: string) {
   }
 
   if (href === "/inventory") {
-    return pathname === "/inventory" || /^\/inventory\/(?!new$)[^/]+$/.test(pathname);
+    return pathname === "/inventory" || pathname.startsWith("/inventory/");
   }
 
   if (href === "/requests") {
-    return pathname === "/requests" || /^\/requests\/[^/]+$/.test(pathname);
+    return pathname === "/requests" || pathname.startsWith("/requests/");
   }
 
   return pathname === href;
@@ -96,13 +83,7 @@ export function AppSidebar({ currentUser }: { currentUser: User }) {
 
   const effectiveWidth = collapsed ? COLLAPSED_WIDTH : width;
   const style = useMemo(() => ({ width: effectiveWidth }), [effectiveWidth]);
-  const visibleNavItems = useMemo(
-    () =>
-      navItems.filter(
-        (item) => !item.adminOnly || currentUser.role === "admin",
-      ),
-    [currentUser.role],
-  );
+  const visibleNavItems = useMemo(() => navItems, []);
 
   function startResize(event: React.PointerEvent<HTMLDivElement>) {
     if (collapsed) {

@@ -58,6 +58,50 @@ async function createFixture(
   return { admin, employee, item, request };
 }
 
+async function createMultiItemFixture() {
+  const [admin, employee] = await db
+    .insert(users)
+    .values([
+      {
+        name: "Admin",
+        email: `admin-${crypto.randomUUID()}@test.local`,
+        role: "admin",
+      },
+      {
+        name: "Ali",
+        email: `ali-${crypto.randomUUID()}@test.local`,
+        role: "employee",
+      },
+    ])
+    .returning();
+  const [firstItem, secondItem] = await db
+    .insert(inventoryItems)
+    .values([
+      {
+        name: "A4 Paper",
+        sku: `PAPER-${crypto.randomUUID()}`,
+        category: "Stationery",
+        warehouse: "Main Warehouse",
+        unit: "Ream",
+        quantityOnHand: 10,
+        quantityReserved: 0,
+        reorderPoint: 5,
+      },
+      {
+        name: "Ink",
+        sku: `INK-${crypto.randomUUID()}`,
+        category: "IT",
+        warehouse: "Main Warehouse",
+        unit: "Each",
+        quantityOnHand: 8,
+        quantityReserved: 0,
+        reorderPoint: 2,
+      },
+    ])
+    .returning();
+  return { admin, employee, firstItem, secondItem };
+}
+
 describe("request approval and fulfillment", () => {
   beforeEach(resetDatabase);
   afterEach(resetDatabase);
@@ -176,5 +220,95 @@ describe("request approval and fulfillment", () => {
     await expect(
       updateRequestStatus(request.id, { status: "rejected" }, admin.name),
     ).rejects.toThrow("A rejection comment is required.");
+  });
+
+  it("creates and fulfills multi-item requests", async () => {
+    const { admin, employee, firstItem, secondItem } =
+      await createMultiItemFixture();
+    const request = await createRequest(
+      {
+        department: "Marketing",
+        warehouse: "Main Warehouse",
+        requiredBy: "2026-05-22",
+        priority: "normal",
+        reason: "Multi item request",
+        items: [
+          { itemId: firstItem.id, quantityRequested: 3 },
+          { itemId: secondItem.id, quantityRequested: 4 },
+        ],
+      },
+      employee,
+    );
+
+    await updateRequestStatus(request.id, { status: "approved" }, admin.name);
+    await updateRequestStatus(request.id, { status: "fulfilled" }, admin.name);
+
+    const [updatedFirst] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, firstItem.id));
+    const [updatedSecond] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, secondItem.id));
+
+    expect(updatedFirst.quantityOnHand).toBe(7);
+    expect(updatedSecond.quantityOnHand).toBe(4);
+  });
+
+  it("blocks multi-item fulfillment without partial stock deduction", async () => {
+    const { admin, employee, firstItem, secondItem } =
+      await createMultiItemFixture();
+    const request = await createRequest(
+      {
+        department: "Marketing",
+        warehouse: "Main Warehouse",
+        requiredBy: "2026-05-22",
+        priority: "normal",
+        reason: "Blocked multi item request",
+        items: [
+          { itemId: firstItem.id, quantityRequested: 3 },
+          { itemId: secondItem.id, quantityRequested: 9 },
+        ],
+      },
+      employee,
+    );
+
+    await updateRequestStatus(request.id, { status: "approved" }, admin.name);
+    await expect(
+      updateRequestStatus(request.id, { status: "fulfilled" }, admin.name),
+    ).rejects.toThrow("Insufficient stock");
+
+    const [updatedFirst] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, firstItem.id));
+    const [updatedSecond] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, secondItem.id));
+
+    expect(updatedFirst.quantityOnHand).toBe(10);
+    expect(updatedSecond.quantityOnHand).toBe(8);
+  });
+
+  it("rejects duplicate items in request creation", async () => {
+    const { employee, firstItem } = await createMultiItemFixture();
+    await expect(
+      createRequest(
+        {
+          department: "Marketing",
+          warehouse: "Main Warehouse",
+          requiredBy: "2026-05-22",
+          priority: "normal",
+          reason: "Duplicate item request",
+          items: [
+            { itemId: firstItem.id, quantityRequested: 1 },
+            { itemId: firstItem.id, quantityRequested: 2 },
+          ],
+        },
+        employee,
+      ),
+    ).rejects.toThrow("Duplicate request items");
   });
 });

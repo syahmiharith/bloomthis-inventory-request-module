@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { StockBadge } from "@/components/ui/StockBadge";
 import { stockStatusFromQuantities } from "@/lib/inventory";
 import type { getItemById } from "@/services/item.service";
@@ -63,35 +62,32 @@ export function InventoryItemDetailPanel({
           </div>
         </dl>
       </section>
-
-      <section className="panel">
-        <div className="panel-header stacked-panel-header">
-          <div>
-            <h3>Action</h3>
-            <p>
-              {isAdmin
-                ? "Editing is intentionally out of scope for this assignment."
-                : "Create a request when stock is available."}
-            </p>
-          </div>
-        </div>
-        <div className="admin-controls">
-          {!isAdmin && item.available > 0 ? (
-            <Link
-              className="button button-primary"
-              href={`/requests/new?itemId=${item.id}`}
-            >
-              Request Item
-            </Link>
-          ) : !isAdmin ? (
-            <p className="alert alert-error">
-              This item is currently out of stock and cannot be requested.
-            </p>
-          ) : (
-            <p className="empty-state">No item editing actions are enabled.</p>
-          )}
-        </div>
-      </section>
     </div>
+  );
+}
+
+export function InventoryItemDetailFooter({
+  isAdmin,
+  item,
+}: {
+  isAdmin: boolean;
+  item: InventoryItemDetail;
+}) {
+  if (isAdmin) {
+    return <p className="muted">No item editing actions are enabled.</p>;
+  }
+
+  if (item.available <= 0) {
+    return (
+      <p className="alert alert-error">
+        This item is currently out of stock and cannot be requested.
+      </p>
+    );
+  }
+
+  return (
+    <a className="button button-primary" href={`/requests/new?itemId=${item.id}`}>
+      Request Item
+    </a>
   );
 }

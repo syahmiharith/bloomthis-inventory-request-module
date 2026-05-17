@@ -9,6 +9,7 @@ export function SplitWorkspace({
   panel?: {
     children: ReactNode;
     closeHref: string;
+    footer?: ReactNode;
     title: string;
   };
 }) {

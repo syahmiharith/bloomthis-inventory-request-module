@@ -9,7 +9,10 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getDashboardPageData } from "@/services/dashboard.service";
+import {
+  getDashboardPageData,
+  getUrgentDashboard,
+} from "@/services/dashboard.service";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { KpiCard, KpiGrid } from "@/components/ui/Kpi";
@@ -17,7 +20,10 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function HomePage() {
   const currentUser = await getCurrentUser();
-  const dashboard = await getDashboardPageData(currentUser);
+  const [dashboard, urgent] = await Promise.all([
+    getDashboardPageData(currentUser),
+    getUrgentDashboard(currentUser),
+  ]);
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -102,6 +108,38 @@ export default async function HomePage() {
         </KpiGrid>
 
         <div className="dashboard-grid refined-dashboard-grid">
+          <section className="panel">
+            <PanelHeading
+              title="Priority Action Queue"
+              subtitle="Highest-priority stock and request work."
+            />
+            <div className="dashboard-risk-list">
+              {[
+                ...urgent.priorityQueue.map((request) => ({
+                  href: `/requests/${request.id}`,
+                  label: request.risk,
+                  reason: `${request.requestCode} · ${request.department}`,
+                  target: request.requesterName,
+                })),
+                ...urgent.inventoryRisk.map((item) => ({
+                  href: `/inventory/${item.id}`,
+                  label: item.status,
+                  reason: `${item.pendingDemand} units in active demand`,
+                  target: item.name,
+                })),
+              ]
+                .slice(0, 8)
+                .map((entry) => (
+                  <Link className="dashboard-risk-row" href={entry.href} key={entry.href}>
+                    <span className="badge badge-amber">{entry.label}</span>
+                    <strong>{entry.target}</strong>
+                    <span>{entry.reason}</span>
+                    <ArrowRight />
+                  </Link>
+                ))}
+            </div>
+          </section>
+
           <section className="panel" data-testid="dashboard-recent-requests">
             <PanelHeading
               title={isAdmin ? "Recent Requests" : "My Recent Requests"}
@@ -207,6 +245,25 @@ export default async function HomePage() {
                   />
                 </>
               )}
+            </div>
+          </section>
+
+          <section className="panel">
+            <PanelHeading
+              title="Recent Activity"
+              subtitle="Latest request and inventory events."
+            />
+            <div className="timeline-list">
+              {urgent.recentActivity.slice(0, 7).map((entry) => (
+                <article key={entry.id}>
+                  <span className="timeline-dot" />
+                  <div>
+                    <strong>{entry.action.replaceAll("_", " ")}</strong>
+                    <p>{entry.requestCode ?? "Inventory activity"}</p>
+                  </div>
+                  <time>{formatDate(entry.createdAt)}</time>
+                </article>
+              ))}
             </div>
           </section>
         </div>

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { NotFoundError } from "@/lib/errors";
 import { getRequestById } from "@/services/request.service";
-import { RequestDetailPanel } from "../RequestDetailPanel";
+import { RequestDetailFooter, RequestDetailPanel } from "../RequestDetailPanel";
 import {
   RequestsWorkspace,
   type RequestWorkspaceSearchParams,
@@ -33,6 +33,12 @@ export default async function RequestDetailPage({
         <RequestDetailPanel
           isAdmin={currentUser.role === "admin"}
           query={query}
+          request={request}
+        />
+      }
+      panelFooter={
+        <RequestDetailFooter
+          isAdmin={currentUser.role === "admin"}
           request={request}
         />
       }

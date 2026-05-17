@@ -11,7 +11,11 @@ import {
 
 const initialState: CreateInventoryItemState = {};
 
-export function InventoryItemForm() {
+export function InventoryItemForm({
+  onClose,
+}: {
+  onClose?: () => void;
+} = {}) {
   const router = useRouter();
   const [dirty, setDirty] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
@@ -20,18 +24,27 @@ export function InventoryItemForm() {
     initialState,
   );
 
+  function closeCleanForm() {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    router.push("/inventory");
+  }
+
   function closeForm() {
     if (dirty) {
       setShowDiscardDialog(true);
       return;
     }
 
-    router.push("/inventory");
+    closeCleanForm();
   }
 
   return (
     <FormModal
       description="Create a stock item with a SKU, category, and threshold."
+      disableEscapeClose={showDiscardDialog}
       onClose={closeForm}
       title="Add Inventory Item"
     >
@@ -130,6 +143,7 @@ export function InventoryItemForm() {
       {showDiscardDialog ? (
         <ConfirmDiscardDialog
           discardHref="/inventory"
+          onDiscard={onClose}
           onKeepEditing={() => setShowDiscardDialog(false)}
         />
       ) : null}

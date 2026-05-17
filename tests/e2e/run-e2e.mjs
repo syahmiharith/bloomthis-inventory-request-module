@@ -51,11 +51,10 @@ async function waitForServer(url) {
   while (Date.now() - startedAt < 120_000) {
     try {
       const response = await fetch(url);
+      await response.arrayBuffer();
       if (response.ok || response.status < 500) {
-        await response.body?.cancel();
         return;
       }
-      await response.body?.cancel();
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }

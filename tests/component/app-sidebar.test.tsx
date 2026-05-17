@@ -19,24 +19,31 @@ const baseUser = {
 describe("AppSidebar", () => {
   afterEach(cleanup);
 
-  it("shows admin inventory creation navigation to admins", () => {
+  it("shows only primary workspace navigation to admins", () => {
     render(<AppSidebar currentUser={{ ...baseUser, role: "admin" }} />);
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Inventory" })).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: "Add Inventory Item" }),
-    ).toBeVisible();
     expect(screen.getByRole("link", { name: "Requests" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "New Request" })).toBeVisible();
-  });
-
-  it("hides admin inventory creation navigation from employees", () => {
-    render(<AppSidebar currentUser={{ ...baseUser, role: "employee" }} />);
-
     expect(
       screen.queryByRole("link", { name: "Add Inventory Item" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "New Request" })).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "New Request" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps employee navigation scoped to primary workspaces", () => {
+    render(<AppSidebar currentUser={{ ...baseUser, role: "employee" }} />);
+
+    expect(screen.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Inventory" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Requests" })).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "Add Inventory Item" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "New Request" }),
+    ).not.toBeInTheDocument();
   });
 });

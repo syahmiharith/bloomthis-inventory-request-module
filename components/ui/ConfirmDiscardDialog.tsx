@@ -1,17 +1,42 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 type ConfirmDiscardDialogProps = {
-  discardHref: string;
+  discardHref?: string;
+  onDiscard?: () => void;
   onKeepEditing: () => void;
 };
 
 export function ConfirmDiscardDialog({
   discardHref,
+  onDiscard,
   onKeepEditing,
 }: ConfirmDiscardDialogProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onKeepEditing();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onKeepEditing]);
+
+  function discard() {
+    if (onDiscard) {
+      onDiscard();
+      return;
+    }
+    if (discardHref) {
+      router.push(discardHref);
+    }
+  }
 
   return (
     <div className="confirm-backdrop">
@@ -35,7 +60,7 @@ export function ConfirmDiscardDialog({
           </button>
           <button
             className="button button-danger"
-            onClick={() => router.push(discardHref)}
+            onClick={discard}
             type="button"
           >
             Discard

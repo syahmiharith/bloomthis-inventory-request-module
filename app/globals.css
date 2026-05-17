@@ -250,6 +250,11 @@ tr:last-child td {
   cursor: pointer;
 }
 
+.button-compact {
+  min-height: 36px;
+  padding: 7px 12px;
+}
+
 .button:disabled,
 .button[aria-disabled="true"] {
   cursor: not-allowed;
@@ -944,6 +949,11 @@ tbody tr.selected {
 
 .skeleton-table-wrap {
   border-radius: 0 0 8px 8px;
+  margin-top: 10px;
+}
+
+.skeleton-table-wrap tbody tr {
+  border-top: 8px solid transparent;
 }
 
 .skeleton-side-panel {
@@ -1003,7 +1013,7 @@ tbody tr.selected {
 
 .request-lines {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .request-lines-header {
@@ -1018,9 +1028,14 @@ tbody tr.selected {
 
 .request-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 40px;
+  grid-template-columns: minmax(180px, 1fr) 120px 110px auto;
   gap: 12px;
   align-items: end;
+}
+
+.line-warning {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .remove-line {
@@ -1286,6 +1301,19 @@ tbody tr.selected {
   padding: 14px;
 }
 
+.detail-side-panel-footer {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.side-panel-footer-actions {
+  display: grid;
+  gap: 10px;
+}
+
 .side-panel-resize-handle {
   position: absolute;
   top: 0;
@@ -1326,6 +1354,7 @@ tbody tr.selected {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 20px;
 }
 
 .route-heading h2 {
@@ -1433,6 +1462,23 @@ tbody tr.selected {
   grid-template-columns: 18px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: start;
+}
+
+.timeline-item .timeline-dot {
+  background: var(--muted);
+}
+
+.timeline-item.is-created .timeline-dot {
+  background: var(--blue);
+}
+
+.timeline-item.is-approved .timeline-dot,
+.timeline-item.is-fulfilled .timeline-dot {
+  background: var(--green);
+}
+
+.timeline-item.is-rejected .timeline-dot {
+  background: var(--red);
 }
 
 .timeline-list p,

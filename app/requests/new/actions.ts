@@ -23,6 +23,9 @@ export async function createInventoryRequestAction(
   }
 
   try {
+    const itemIds = formData.getAll("itemId");
+    const quantities = formData.getAll("quantityRequested");
+
     await createRequest(
       {
         department: actor.department,
@@ -30,14 +33,10 @@ export async function createInventoryRequestAction(
         requiredBy: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         priority: "normal",
         reason: formData.get("reason"),
-        items: [
-          {
-            itemId: formData.get("itemId"),
-            quantityRequested: numberFromForm(
-              formData.get("quantityRequested"),
-            ),
-          },
-        ],
+        items: itemIds.map((itemId, index) => ({
+          itemId,
+          quantityRequested: numberFromForm(quantities[index] ?? null),
+        })),
       },
       actor,
     );

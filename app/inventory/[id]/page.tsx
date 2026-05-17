@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getItemById } from "@/services/item.service";
-import { InventoryItemDetailPanel } from "../InventoryItemDetailPanel";
+import {
+  InventoryItemDetailFooter,
+  InventoryItemDetailPanel,
+} from "../InventoryItemDetailPanel";
 import {
   InventoryWorkspace,
   type InventoryWorkspaceSearchParams,
@@ -34,6 +37,12 @@ export default async function InventoryDetailPage({
       searchParams={query ?? {}}
       panel={
         <InventoryItemDetailPanel
+          isAdmin={currentUser.role === "admin"}
+          item={item}
+        />
+      }
+      panelFooter={
+        <InventoryItemDetailFooter
           isAdmin={currentUser.role === "admin"}
           item={item}
         />

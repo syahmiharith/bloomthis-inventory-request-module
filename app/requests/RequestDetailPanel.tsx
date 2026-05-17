@@ -20,19 +20,6 @@ export function RequestDetailPanel({
     (sum, item) => sum + item.requestedQuantity,
     0,
   );
-  const canFulfill =
-    request.status === "approved" &&
-    request.items.every(
-      (item) => item.availableQuantity >= item.requestedQuantity,
-    );
-  const fulfillPreview = request.items
-    .map(
-      (item) =>
-        `${item.itemName}: ${item.availableQuantity} -> ${
-          item.availableQuantity - item.requestedQuantity
-        }`,
-    )
-    .join("\n");
 
   return (
     <div className="panel-detail-stack" data-testid="request-detail-panel">
@@ -124,31 +111,6 @@ export function RequestDetailPanel({
         </div>
       </section>
 
-      {isAdmin ? (
-        <section className="panel">
-          <div className="panel-header stacked-panel-header">
-            <div>
-              <h3>Admin Actions</h3>
-              <p>Server-validated before stock changes.</p>
-            </div>
-          </div>
-          <div className="admin-controls">
-            <AdminActions
-              canFulfill={canFulfill}
-              fulfillPreview={fulfillPreview}
-              requestId={request.id}
-              status={request.status}
-            />
-            {request.status === "approved" && !canFulfill ? (
-              <p className="alert alert-error">
-                Fulfillment is disabled because one or more requested items do
-                not have enough available stock.
-              </p>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
       <section className="panel">
         <div className="panel-header stacked-panel-header">
           <div>
@@ -159,23 +121,69 @@ export function RequestDetailPanel({
         {request.requestHistory.length === 0 ? (
           <p className="empty-state">No history yet.</p>
         ) : (
-          <div className="audit-list panel-audit-list">
+          <div className="timeline-list panel-audit-list">
             {request.requestHistory.map((entry) => (
-              <div key={entry.id}>
-                <strong>{humanize(entry.action)}</strong>
-                <span>
-                  {entry.actorName} · {entry.actorRole}
-                  {entry.fromStatus || entry.toStatus
-                    ? ` · ${entry.fromStatus ?? "new"} to ${entry.toStatus ?? "none"}`
-                    : ""}
-                </span>
+              <article className={`timeline-item ${timelineTone(entry.action)}`} key={entry.id}>
+                <span className="timeline-dot" />
+                <div>
+                  <strong>{humanize(entry.action)}</strong>
+                  <span>
+                    {entry.actorName} · {entry.actorRole}
+                    {entry.fromStatus || entry.toStatus
+                      ? ` · ${entry.fromStatus ?? "new"} to ${entry.toStatus ?? "none"}`
+                      : ""}
+                  </span>
+                  <time>{formatDateTime(entry.createdAt)}</time>
+                </div>
                 {entry.note ? <span>{entry.note}</span> : null}
-                <time>{formatDateTime(entry.createdAt)}</time>
-              </div>
+              </article>
             ))}
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+export function RequestDetailFooter({
+  isAdmin,
+  request,
+}: {
+  isAdmin: boolean;
+  request: RequestDetail;
+}) {
+  if (!isAdmin) {
+    return <p className="muted">Only admins can update request status.</p>;
+  }
+
+  const canFulfill =
+    request.status === "approved" &&
+    request.items.every(
+      (item) => item.availableQuantity >= item.requestedQuantity,
+    );
+  const fulfillPreview = request.items
+    .map(
+      (item) =>
+        `${item.itemName}: ${item.availableQuantity} -> ${
+          item.availableQuantity - item.requestedQuantity
+        }`,
+    )
+    .join("\n");
+
+  return (
+    <div className="side-panel-footer-actions">
+      <AdminActions
+        canFulfill={canFulfill}
+        fulfillPreview={fulfillPreview}
+        requestId={request.id}
+        status={request.status}
+      />
+      {request.status === "approved" && !canFulfill ? (
+        <p className="alert alert-error">
+          Fulfillment is disabled because one or more requested items do not
+          have enough available stock.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -243,4 +251,12 @@ function humanize(value: string) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function timelineTone(action: string) {
+  if (action.includes("approved")) return "is-approved";
+  if (action.includes("rejected")) return "is-rejected";
+  if (action.includes("fulfilled")) return "is-fulfilled";
+  if (action.includes("created")) return "is-created";
+  return "is-system";
 }

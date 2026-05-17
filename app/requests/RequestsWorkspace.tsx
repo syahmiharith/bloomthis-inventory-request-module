@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PlusCircle, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
@@ -9,11 +9,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { User } from "@/db/schema";
 import type { RequestStatus } from "@/lib/constants";
+import { listItems } from "@/services/item.service";
 import { listRequests } from "@/services/request.service";
+import { RequestCreateModalButton } from "./RequestCreateModalButton";
 
 export type RequestWorkspaceSearchParams = {
   category?: string;
   error?: string;
+  page?: string;
   q?: string;
   status?: string;
   success?: string;
@@ -25,17 +28,20 @@ const requestStatuses: RequestStatus[] = [
   "rejected",
   "fulfilled",
 ];
+const pageSize = 25;
 
 export async function RequestsWorkspace({
   currentUser,
   overlay,
   panel,
+  panelFooter,
   selectedRequestId,
   searchParams,
 }: {
   currentUser: User;
   overlay?: React.ReactNode;
   panel?: React.ReactNode;
+  panelFooter?: React.ReactNode;
   selectedRequestId?: string;
   searchParams: RequestWorkspaceSearchParams;
 }) {
@@ -46,14 +52,16 @@ export async function RequestsWorkspace({
     : undefined;
   const query = searchParams.q?.trim().toLowerCase() ?? "";
   const selectedCategory = searchParams.category?.trim() ?? "";
-  const requests = await listRequests(
-    selectedStatus ? { status: selectedStatus } : {},
-    currentUser,
-  );
+  const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+  const [requests, allAccessibleRequests, inventoryItems] = await Promise.all([
+    listRequests(selectedStatus ? { status: selectedStatus } : {}, currentUser),
+    listRequests({}, currentUser),
+    listItems({}),
+  ]);
   const isAdmin = currentUser.role === "admin";
   const categories = Array.from(
     new Set(
-      requests.flatMap((request) =>
+      allAccessibleRequests.flatMap((request) =>
         request.items.map((item) => item.itemCategory),
       ),
     ),
@@ -69,6 +77,15 @@ export async function RequestsWorkspace({
       request.items.some((item) => item.itemCategory === selectedCategory);
     return matchesQuery && matchesCategory;
   });
+  const pageCount = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+  const safePage = Math.min(currentPage, pageCount);
+  const pagedRequests = filteredRequests.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
+  const selectedOutsideFilters =
+    selectedRequestId !== undefined &&
+    !filteredRequests.some((request) => request.id === selectedRequestId);
 
   return (
     <WorkspaceLayout
@@ -77,6 +94,7 @@ export async function RequestsWorkspace({
           ? {
               children: panel,
               closeHref: "/requests",
+              footer: panelFooter,
               title: "Request Details",
             }
           : undefined
@@ -96,13 +114,16 @@ export async function RequestsWorkspace({
             }
             actions={
               !isAdmin ? (
-              <Link
-                className="button button-primary actions"
-                href="/requests/new"
-              >
-                <PlusCircle size={16} />
-                Create Request
-              </Link>
+                <RequestCreateModalButton
+                  items={inventoryItems.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    sku: item.sku,
+                    category: item.category,
+                    available: item.available,
+                  }))}
+                  requesterName={currentUser.name}
+                />
               ) : null
             }
           />
@@ -116,6 +137,12 @@ export async function RequestsWorkspace({
           {searchParams.error ? (
             <p aria-live="polite" className="alert alert-error">
               {searchParams.error}
+            </p>
+          ) : null}
+          {selectedOutsideFilters ? (
+            <p aria-live="polite" className="alert alert-info">
+              The selected request is outside the current filters. Clear filters
+              to show it in the table.
             </p>
           ) : null}
 
@@ -170,9 +197,16 @@ export async function RequestsWorkspace({
               <EmptyState
                 action={
                   !isAdmin ? (
-                  <Link className="button button-primary" href="/requests/new">
-                    Create Request
-                  </Link>
+                    <RequestCreateModalButton
+                      items={inventoryItems.map((item) => ({
+                        id: item.id,
+                        name: item.name,
+                        sku: item.sku,
+                        category: item.category,
+                        available: item.available,
+                      }))}
+                      requesterName={currentUser.name}
+                    />
                   ) : null
                 }
               >
@@ -194,7 +228,7 @@ export async function RequestsWorkspace({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRequests.map((request) => {
+                    {pagedRequests.map((request) => {
                       const totalQuantity = request.items.reduce(
                         (sum, item) => sum + item.requestedQuantity,
                         0,
@@ -246,12 +280,73 @@ export async function RequestsWorkspace({
                   </tbody>
               </DataTable>
             )}
+            {filteredRequests.length > pageSize ? (
+              <Pagination
+                basePath="/requests"
+                page={safePage}
+                pageCount={pageCount}
+                searchParams={{
+                  category: selectedCategory,
+                  q: query,
+                  status: selectedStatus ?? "",
+                }}
+              />
+            ) : null}
           </section>
         </section>
         {overlay}
       </main>
     </WorkspaceLayout>
   );
+}
+
+function Pagination({
+  basePath,
+  page,
+  pageCount,
+  searchParams,
+}: {
+  basePath: string;
+  page: number;
+  pageCount: number;
+  searchParams: Record<string, string>;
+}) {
+  return (
+    <div className="pagination-row">
+      <span>
+        Page {page} of {pageCount}
+      </span>
+      <div>
+        <Link
+          aria-disabled={page <= 1}
+          className="button button-secondary button-compact"
+          href={pageHref(basePath, searchParams, page - 1)}
+        >
+          Previous
+        </Link>
+        <Link
+          aria-disabled={page >= pageCount}
+          className="button button-secondary button-compact"
+          href={pageHref(basePath, searchParams, page + 1)}
+        >
+          Next
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function pageHref(
+  basePath: string,
+  searchParams: Record<string, string>,
+  page: number,
+) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value) params.set(key, value);
+  }
+  params.set("page", String(Math.max(1, page)));
+  return `${basePath}?${params.toString()}`;
 }
 
 function StockSummary({

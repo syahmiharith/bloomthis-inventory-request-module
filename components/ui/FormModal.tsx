@@ -1,11 +1,13 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
 type FormModalProps = {
   children: ReactNode;
   description?: string;
+  disableEscapeClose?: boolean;
   onClose: () => void;
   title: string;
 };
@@ -13,9 +15,29 @@ type FormModalProps = {
 export function FormModal({
   children,
   description,
+  disableEscapeClose = false,
   onClose,
   title,
 }: FormModalProps) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || disableEscapeClose) {
+        return;
+      }
+      event.preventDefault();
+      onClose();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [disableEscapeClose, onClose]);
+
   return (
     <div className="form-modal-backdrop">
       <section
@@ -36,6 +58,7 @@ export function FormModal({
             aria-label="Close form"
             className="icon-button"
             onClick={onClose}
+            ref={closeButtonRef}
             type="button"
           >
             <X aria-hidden="true" />

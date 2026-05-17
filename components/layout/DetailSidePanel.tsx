@@ -13,10 +13,12 @@ const STORAGE_KEY = "detail-side-panel-width";
 export function DetailSidePanel({
   children,
   closeHref,
+  footer,
   title,
 }: {
   children: React.ReactNode;
   closeHref: string;
+  footer?: React.ReactNode;
   title: string;
 }) {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -74,6 +76,7 @@ export function DetailSidePanel({
         </Link>
       </div>
       <div className="detail-side-panel-scroll">{children}</div>
+      {footer ? <div className="detail-side-panel-footer">{footer}</div> : null}
     </aside>
   );
 }

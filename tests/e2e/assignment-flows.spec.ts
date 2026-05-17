@@ -12,6 +12,15 @@ test("smoke loads core routes", async ({ page }) => {
 
   await page.goto("/inventory");
   await expect(page.getByTestId("inventory-page")).toBeVisible();
+  await page.getByRole("button", { name: "Add Item" }).click();
+  await expect(page).toHaveURL(/\/inventory$/);
+  await expect(
+    page.getByRole("heading", { name: "Add Inventory Item" }).first(),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("heading", { name: "Add Inventory Item" }),
+  ).toHaveCount(0);
 
   await page.goto("/inventory/new");
   await expect(
@@ -22,10 +31,39 @@ test("smoke loads core routes", async ({ page }) => {
   await expect(page.getByTestId("requests-page")).toBeVisible();
 
   await switchDemoUser(page, "Evan Employee (employee)");
+  await page.goto("/requests");
+  await page.getByRole("button", { name: "Create Request" }).click();
+  await expect(page).toHaveURL(/\/requests$/);
+  await expect(
+    page.getByRole("heading", { name: "New Request" }).first(),
+  ).toBeVisible();
+  await page.getByLabel("Reason").fill("Testing dirty Escape behavior");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "New Request" }).first(),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close form" }).click();
+  await page.getByRole("button", { name: "Discard" }).click();
+
   await page.goto("/requests/new");
   await expect(
     page.getByRole("heading", { name: "New Request" }).first(),
   ).toBeVisible();
+});
+
+test("filters inventory and request workspaces", async ({ page }) => {
+  await switchDemoUser(page, "Aisha Admin (admin)");
+
+  await page.goto("/inventory?q=A4&stock=in");
+  await expect(page.getByTestId("inventory-page")).toBeVisible();
+  await expect(page.getByRole("cell", { name: /A4 Copy Paper/i })).toBeVisible();
+
+  await page.goto("/requests?status=pending&q=REQ");
+  await expect(page.getByTestId("requests-page")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Pending" }).first()).toBeVisible();
 });
 
 test("employee creates request and cannot see admin actions", async ({

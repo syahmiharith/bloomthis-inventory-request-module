@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PlusCircle, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
@@ -10,41 +10,74 @@ import { StockBadge } from "@/components/ui/StockBadge";
 import type { User } from "@/db/schema";
 import { stockStatusFromQuantities } from "@/lib/inventory";
 import { listItems } from "@/services/item.service";
+import { InventoryCreateModalButton } from "./InventoryCreateModalButton";
 
 export type InventoryWorkspaceSearchParams = {
   category?: string;
+  page?: string;
   q?: string;
+  stock?: string;
   success?: string;
 };
+
+const pageSize = 25;
+const stockFilters = ["in", "low", "out"] as const;
 
 export async function InventoryWorkspace({
   currentUser,
   overlay,
   panel,
+  panelFooter,
   selectedItemId,
   searchParams,
 }: {
   currentUser: User;
   overlay?: React.ReactNode;
   panel?: React.ReactNode;
+  panelFooter?: React.ReactNode;
   selectedItemId?: string;
   searchParams: InventoryWorkspaceSearchParams;
 }) {
   const query = searchParams.q?.trim() ?? "";
   const selectedCategory = searchParams.category?.trim() ?? "";
+  const selectedStock: "" | (typeof stockFilters)[number] = stockFilters.includes(
+    searchParams.stock as (typeof stockFilters)[number],
+  )
+    ? (searchParams.stock as (typeof stockFilters)[number])
+    : "";
+  const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
   const allItems = await listItems({});
   const categories = Array.from(
     new Set(allItems.map((item) => item.category)),
   ).sort((left, right) => left.localeCompare(right));
   const filteredItems = allItems.filter((item) => {
+    const status = stockStatusFromQuantities(
+      item.quantityOnHand,
+      item.quantityReserved,
+      item.reorderPoint,
+    );
     const matchesQuery =
       query.length === 0 ||
       item.name.toLowerCase().includes(query.toLowerCase()) ||
       item.sku.toLowerCase().includes(query.toLowerCase());
     const matchesCategory =
       selectedCategory.length === 0 || item.category === selectedCategory;
-    return matchesQuery && matchesCategory;
+    const matchesStock =
+      selectedStock === "" ||
+      (selectedStock === "in" && status === "In Stock") ||
+      (selectedStock === "low" && status === "Low Stock") ||
+      (selectedStock === "out" && status === "Out of Stock");
+    return matchesQuery && matchesCategory && matchesStock;
   });
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const safePage = Math.min(currentPage, pageCount);
+  const pagedItems = filteredItems.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize,
+  );
+  const selectedOutsideFilters =
+    selectedItemId !== undefined &&
+    !filteredItems.some((item) => item.id === selectedItemId);
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -54,6 +87,7 @@ export async function InventoryWorkspace({
           ? {
               children: panel,
               closeHref: "/inventory",
+              footer: panelFooter,
               title: "Item Details",
             }
           : undefined
@@ -67,22 +101,18 @@ export async function InventoryWorkspace({
           <PageHeader
             title="Inventory"
             description="Browse current stock levels and identify low-stock or out-of-stock items."
-            actions={
-              isAdmin ? (
-              <Link
-                className="button button-primary actions"
-                href="/inventory/new"
-              >
-                <PlusCircle size={16} />
-                Add Item
-              </Link>
-              ) : null
-            }
+            actions={isAdmin ? <InventoryCreateModalButton /> : null}
           />
 
           {searchParams.success ? (
             <p aria-live="polite" className="alert alert-success">
               {searchParams.success}
+            </p>
+          ) : null}
+          {selectedOutsideFilters ? (
+            <p aria-live="polite" className="alert alert-info">
+              The selected item is outside the current filters. Clear filters to
+              show it in the table.
             </p>
           ) : null}
 
@@ -111,10 +141,19 @@ export async function InventoryWorkspace({
                   ))}
                 </select>
               </label>
+              <label className="filter-select">
+                <span>Stock</span>
+                <select defaultValue={selectedStock} name="stock">
+                  <option value="">All stock</option>
+                  <option value="in">In stock</option>
+                  <option value="low">Low stock</option>
+                  <option value="out">Out of stock</option>
+                </select>
+              </label>
               <button className="button button-secondary" type="submit">
                 Filter
               </button>
-              {query || selectedCategory ? (
+              {query || selectedCategory || selectedStock ? (
                 <Link className="clear-filter-link" href="/inventory">
                   Clear filters
                 </Link>
@@ -126,9 +165,7 @@ export async function InventoryWorkspace({
               <EmptyState
                 action={
                   isAdmin ? (
-                  <Link className="button button-primary" href="/inventory/new">
-                    Add Inventory Item
-                  </Link>
+                    <InventoryCreateModalButton />
                   ) : null
                 }
               >
@@ -147,7 +184,7 @@ export async function InventoryWorkspace({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((item) => {
+                    {pagedItems.map((item) => {
                       const status = stockStatusFromQuantities(
                         item.quantityOnHand,
                         item.quantityReserved,
@@ -195,10 +232,71 @@ export async function InventoryWorkspace({
                   </tbody>
               </DataTable>
             )}
+            {filteredItems.length > pageSize ? (
+              <Pagination
+                basePath="/inventory"
+                page={safePage}
+                pageCount={pageCount}
+                searchParams={{
+                  category: selectedCategory,
+                  q: query,
+                  stock: selectedStock,
+                }}
+              />
+            ) : null}
           </section>
         </section>
         {overlay}
       </main>
     </WorkspaceLayout>
   );
+}
+
+function Pagination({
+  basePath,
+  page,
+  pageCount,
+  searchParams,
+}: {
+  basePath: string;
+  page: number;
+  pageCount: number;
+  searchParams: Record<string, string>;
+}) {
+  return (
+    <div className="pagination-row">
+      <span>
+        Page {page} of {pageCount}
+      </span>
+      <div>
+        <Link
+          aria-disabled={page <= 1}
+          className="button button-secondary button-compact"
+          href={pageHref(basePath, searchParams, page - 1)}
+        >
+          Previous
+        </Link>
+        <Link
+          aria-disabled={page >= pageCount}
+          className="button button-secondary button-compact"
+          href={pageHref(basePath, searchParams, page + 1)}
+        >
+          Next
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function pageHref(
+  basePath: string,
+  searchParams: Record<string, string>,
+  page: number,
+) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value) params.set(key, value);
+  }
+  params.set("page", String(Math.max(1, page)));
+  return `${basePath}?${params.toString()}`;
 }

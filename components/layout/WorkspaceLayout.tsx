@@ -9,6 +9,7 @@ export function WorkspaceLayout({
   sidePanel?: {
     children: ReactNode;
     closeHref: string;
+    footer?: ReactNode;
     title: string;
   };
 }) {
@@ -16,7 +17,11 @@ export function WorkspaceLayout({
     <div className="workspace-layout">
       <div className="workspace-layout-main">{children}</div>
       {sidePanel ? (
-        <DetailSidePanel closeHref={sidePanel.closeHref} title={sidePanel.title}>
+        <DetailSidePanel
+          closeHref={sidePanel.closeHref}
+          footer={sidePanel.footer}
+          title={sidePanel.title}
+        >
           {sidePanel.children}
         </DetailSidePanel>
       ) : null}
