@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { revalidateInventoryReads } from "@/lib/cache-tags";
 import { handleRouteError } from "@/lib/http";
 import { itemFilterSchema } from "@/lib/validations";
-import { createItem, listItems } from "@/services/item.service";
+import { createItem, listItems } from "@/features/inventory/services/inventory.service";
 
 export async function GET(request: Request) {
   try {

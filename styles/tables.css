@@ -1,0 +1,375 @@
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table {
+  table-layout: auto;
+}
+
+.inventory-table {
+  min-width: 1228px;
+}
+
+.requests-table {
+  min-width: 1340px;
+}
+
+.resizable-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.resizable-table th {
+  position: relative;
+}
+
+th,
+td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.data-table thead th {
+  border-bottom-color: #cbd5e1;
+  box-shadow: inset 0 -1px 0 #cbd5e1;
+}
+
+tr:last-child td {
+  border-bottom: 0;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover,
+.clickable-row:focus-visible {
+  background: #eef6ff;
+}
+
+.clickable-row:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+.truncate-cell {
+  overflow: hidden;
+  max-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-code {
+  width: 138px;
+}
+
+.col-person {
+  width: 150px;
+}
+
+.col-items,
+.col-item {
+  width: auto;
+}
+
+.col-category {
+  width: 160px;
+}
+
+.col-number {
+  width: 100px;
+}
+
+.col-status,
+.col-stock {
+  width: 140px;
+}
+
+.col-date {
+  width: 110px;
+}
+
+.col-action {
+  width: 48px;
+}
+
+.col-stock-health {
+  width: 220px;
+}
+
+.col-demand {
+  width: 150px;
+}
+
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--muted);
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-button {
+  display: inline-flex;
+  min-width: 34px;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pagination-button[aria-current="page"] {
+  border-color: var(--blue);
+  background: #eff6ff;
+  color: var(--blue);
+}
+
+.pagination-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.list-count-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 10px 16px 0;
+}
+
+.mono-cell {
+  white-space: nowrap;
+  color: var(--blue);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.inline-link {
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  padding: 0;
+  font: inherit;
+}
+
+.clear-filter-link {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  color: var(--blue);
+}
+
+.sort-link {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 700;
+  outline-offset: 3px;
+}
+
+.sort-link:hover,
+.sort-link:focus-visible,
+.sort-link.is-active {
+  color: var(--text);
+}
+
+.sort-indicator {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.column-resize-handle {
+  position: absolute;
+  top: 8px;
+  right: -4px;
+  bottom: 8px;
+  z-index: 3;
+  width: 8px;
+  border-radius: 999px;
+  cursor: col-resize;
+  opacity: 0;
+  transition:
+    background-color 140ms ease,
+    opacity 140ms ease;
+}
+
+.column-resize-handle::after {
+  position: absolute;
+  top: 5px;
+  right: 3px;
+  bottom: 5px;
+  width: 2px;
+  border-radius: 999px;
+  background: #94a3b8;
+  content: "";
+}
+
+th:hover .column-resize-handle,
+.column-resize-handle:focus-visible {
+  opacity: 1;
+}
+
+.col-sku {
+  width: 190px;
+}
+
+.sku-cell {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.item-primary-cell,
+.request-code-cell,
+.inventory-quantity-cell {
+  min-width: 0;
+}
+
+.item-primary-cell strong,
+.request-code-cell strong,
+.inventory-quantity-cell strong {
+  display: block;
+  overflow: visible;
+  color: var(--text);
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.cell-subtext {
+  display: block;
+  overflow: visible;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.inventory-quantity-cell strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.request-code-cell strong {
+  letter-spacing: 0;
+}
+
+.item-chip-list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.item-chip,
+.item-chip-more {
+  display: inline-flex;
+  max-width: none;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  padding: 4px 8px;
+}
+
+.item-chip span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.item-chip small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.item-chip-more {
+  border-color: #cbd5e1;
+  background: #eef2f7;
+  color: #475569;
+}
+
+.resizable-table-shell.is-constrained .item-primary-cell strong,
+.resizable-table-shell.is-constrained .request-code-cell strong,
+.resizable-table-shell.is-constrained .requester-meta strong,
+.resizable-table-shell.is-constrained .requester-meta small,
+.resizable-table-shell.is-constrained .cell-subtext,
+.resizable-table-shell.is-constrained .item-chip span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.resizable-table-shell.is-constrained .cell-subtext,
+.resizable-table-shell.is-constrained .requester-meta small {
+  -webkit-line-clamp: 1;
+}
+
+.resizable-table-shell.is-constrained .item-chip {
+  max-width: 180px;
+}
+
+.date-cell {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.row-chevron-cell {
+  width: 48px;
+  color: #94a3b8;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.row-chevron-cell svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 150ms ease;
+}
+
+.clickable-row:hover .row-chevron-cell svg,
+.clickable-row:focus-visible .row-chevron-cell svg {
+  transform: translateX(2px);
+}

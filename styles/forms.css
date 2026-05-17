@@ -1,0 +1,106 @@
+/* Shared form, button, and focus styles. */
+
+.button {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button-compact {
+  min-height: 36px;
+  padding: 7px 12px;
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.button-primary {
+  background: var(--blue);
+  color: #fff;
+}
+
+.button-secondary {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.button-danger {
+  background: var(--red);
+  color: #fff;
+}
+
+.input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.form-panel {
+  display: grid;
+  gap: 18px;
+  padding: 0;
+}
+
+.two-column-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-actions {
+  justify-content: flex-end;
+}
+
+.read-only-field {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-select span {
+  display: block;
+  color: var(--muted);
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+

@@ -4,16 +4,16 @@ import type { CSSProperties } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
-import { DataTable } from "@/components/ui/DataTable";
+import { DataTable } from "@/components/ui/table/DataTable";
 import { DataToolbar } from "@/components/ui/DataToolbar";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Pagination } from "@/components/ui/Pagination";
-import { ColumnResizeHandle } from "@/components/ui/ResizableDataTable";
-import { SortHeader, sortAria } from "@/components/ui/SortHeader";
-import { StockBadge } from "@/components/ui/StockBadge";
+import { Pagination } from "@/components/ui/table/Pagination";
+import { ColumnResizeHandle } from "@/components/ui/table/ResizableDataTable";
+import { SortHeader, sortAria } from "@/components/ui/table/SortHeader";
+import { StockBadge } from "@/components/ui/badges/StockBadge";
 import type { User } from "@/db/schema";
 import { stockStatusFromQuantities } from "@/lib/inventory";
-import { listItems } from "@/services/item.service";
+import { listItems } from "@/features/inventory/services/inventory.service";
 import { InventoryCreateModalButton } from "./InventoryCreateModalButton";
 
 export type InventoryWorkspaceSearchParams = {

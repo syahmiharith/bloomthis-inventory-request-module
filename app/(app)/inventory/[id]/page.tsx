@@ -1,15 +1,15 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getCurrentUser } from "@/lib/auth";
-import { getItemById } from "@/services/item.service";
 import {
   InventoryItemDetailFooter,
   InventoryItemDetailPanel,
-} from "../InventoryItemDetailPanel";
+} from "@/features/inventory/components/InventoryItemDetailPanel";
 import {
   InventoryWorkspace,
   type InventoryWorkspaceSearchParams,
-} from "../InventoryWorkspace";
+} from "@/features/inventory/components/InventoryWorkspace";
+import { getItemById } from "@/features/inventory/services/inventory.service";
+import { getCurrentUser } from "@/lib/auth";
 
 type InventoryDetailPageProps = {
   params: Promise<{ id: string }>;

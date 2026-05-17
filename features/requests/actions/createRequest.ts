@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidateRequestReads } from "@/lib/cache-tags";
-import { createRequest } from "@/services/request.service";
+import { createRequest } from "@/features/requests/services/request.service";
 
 export type CreateRequestState = {
   errors?: Record<string, string>;

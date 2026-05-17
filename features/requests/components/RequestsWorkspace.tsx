@@ -3,16 +3,16 @@ import { ChevronRight, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
-import { DataTable } from "@/components/ui/DataTable";
+import { DataTable } from "@/components/ui/table/DataTable";
 import { DataToolbar } from "@/components/ui/DataToolbar";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Pagination } from "@/components/ui/Pagination";
-import { ColumnResizeHandle } from "@/components/ui/ResizableDataTable";
-import { SortHeader, sortAria } from "@/components/ui/SortHeader";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Pagination } from "@/components/ui/table/Pagination";
+import { ColumnResizeHandle } from "@/components/ui/table/ResizableDataTable";
+import { SortHeader, sortAria } from "@/components/ui/table/SortHeader";
+import { StatusBadge } from "@/components/ui/badges/StatusBadge";
 import type { User } from "@/db/schema";
 import type { RequestStatus } from "@/lib/constants";
-import { listRequests } from "@/services/request.service";
+import { listRequests } from "@/features/requests/services/request.service";
 import { RequestCreateModalButton } from "./RequestCreateModalButton";
 
 export type RequestWorkspaceSearchParams = {

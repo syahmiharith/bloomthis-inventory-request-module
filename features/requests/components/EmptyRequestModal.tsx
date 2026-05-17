@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormModal } from "@/components/ui/FormModal";
+import { FormModal } from "@/components/ui/modal/FormModal";
 
 export function EmptyRequestModal() {
   const router = useRouter();

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { revalidateInventoryReads } from "@/lib/cache-tags";
-import { createItem } from "@/services/item.service";
+import { createItem } from "@/features/inventory/services/inventory.service";
 
 export type CreateInventoryItemState = {
   errors?: Record<string, string>;

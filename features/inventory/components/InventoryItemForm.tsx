@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
-import { ConfirmDiscardDialog } from "@/components/ui/ConfirmDiscardDialog";
-import { FormModal } from "@/components/ui/FormModal";
+import { ConfirmDiscardDialog } from "@/components/ui/modal/ConfirmDiscardDialog";
+import { FormModal } from "@/components/ui/modal/FormModal";
 import {
   createInventoryItemAction,
   type CreateInventoryItemState,
-} from "./actions";
+} from "@/features/inventory/actions/actions";
 
 const initialState: CreateInventoryItemState = {};
 

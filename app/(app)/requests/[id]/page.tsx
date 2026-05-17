@@ -1,13 +1,16 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getCurrentUser } from "@/lib/auth";
-import { NotFoundError } from "@/lib/errors";
-import { getRequestById } from "@/services/request.service";
-import { RequestDetailFooter, RequestDetailPanel } from "../RequestDetailPanel";
+import {
+  RequestDetailFooter,
+  RequestDetailPanel,
+} from "@/features/requests/components/RequestDetailPanel";
 import {
   RequestsWorkspace,
   type RequestWorkspaceSearchParams,
-} from "../RequestsWorkspace";
+} from "@/features/requests/components/RequestsWorkspace";
+import { getRequestById } from "@/features/requests/services/request.service";
+import { getCurrentUser } from "@/lib/auth";
+import { NotFoundError } from "@/lib/errors";
 
 type RequestDetailPageProps = {
   params: Promise<{ id: string }>;

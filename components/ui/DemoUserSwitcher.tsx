@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Select } from "./Select";
+import { Select } from "@/components/ui/forms/Select";
 
 type DemoUser = {
   id: string;

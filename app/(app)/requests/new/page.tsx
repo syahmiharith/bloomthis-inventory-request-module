@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
-import { RequestsWorkspace } from "../RequestsWorkspace";
-import { RequestForm } from "./RequestForm";
+import { RequestForm } from "@/features/requests/components/RequestForm";
+import { RequestsWorkspace } from "@/features/requests/components/RequestsWorkspace";
 
 type NewRequestPageProps = {
   searchParams?: Promise<{

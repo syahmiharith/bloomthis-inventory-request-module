@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { revalidateRequestReads } from "@/lib/cache-tags";
 import { handleRouteError } from "@/lib/http";
 import { requestFilterSchema } from "@/lib/validations";
-import { createRequest, listRequests } from "@/services/request.service";
+import { createRequest, listRequests } from "@/features/requests/services/request.service";
 
 export async function GET(request: Request) {
   try {

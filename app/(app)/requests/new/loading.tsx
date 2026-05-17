@@ -1,7 +1,7 @@
 import {
   ModalSkeleton,
   WorkspaceTableSkeleton,
-} from "@/components/ui/Skeleton";
+} from "@/components/ui/skeleton/Skeleton";
 
 export default function NewRequestLoading() {
   return (

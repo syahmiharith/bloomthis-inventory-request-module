@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveRequestRisk } from "@/services/dashboard.service";
+import { deriveRequestRisk } from "@/features/dashboard/services/dashboard.service";
 
 describe("dashboard urgency labels", () => {
   const now = new Date("2026-05-16T00:00:00.000Z");

@@ -1,4 +1,7 @@
-import { KpiSkeletonGrid, TableSkeleton } from "@/components/ui/Skeleton";
+import {
+  KpiSkeletonGrid,
+  TableSkeleton,
+} from "@/components/ui/skeleton/Skeleton";
 
 export default function Loading() {
   return (

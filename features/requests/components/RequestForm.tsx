@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { ConfirmDiscardDialog } from "@/components/ui/ConfirmDiscardDialog";
-import { FormModal } from "@/components/ui/FormModal";
+import { ConfirmDiscardDialog } from "@/components/ui/modal/ConfirmDiscardDialog";
+import { FormModal } from "@/components/ui/modal/FormModal";
 import {
   createInventoryRequestAction,
   type CreateRequestState,
-} from "./actions";
+} from "@/features/requests/actions/createRequest";
 
 type RequestableItem = {
   available: number;

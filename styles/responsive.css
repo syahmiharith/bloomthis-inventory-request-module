@@ -1,0 +1,153 @@
+@media (max-width: 1100px) {
+  .summary-grid,
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-risk-row,
+  .dashboard-action-row,
+  .dashboard-signal-row,
+  .stock-risk-row {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+
+  .hide-md {
+    display: none;
+  }
+
+  .col-code {
+    width: 128px;
+  }
+
+  .col-sku {
+    width: 178px;
+  }
+
+  .col-person,
+  .col-category,
+  .col-status {
+    width: 132px;
+  }
+
+  .col-number {
+    width: 86px;
+  }
+
+  .details-region {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 5;
+    width: min(100vw, 480px) !important;
+    box-shadow: -12px 0 30px rgba(15, 23, 42, 0.12);
+  }
+
+  .details-region.is-collapsed {
+    position: static;
+    width: 56px !important;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 1350px) {
+  .refined-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar-region {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(82vw, 280px) !important;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 160ms ease;
+    box-shadow: 12px 0 28px rgba(15, 23, 42, 0.16);
+  }
+
+  .sidebar-region.is-mobile-open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .detail-side-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    width: 100% !important;
+    min-width: 0;
+    max-width: none;
+    flex-basis: auto !important;
+  }
+
+  .side-panel-resize-handle {
+    display: none;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 10px 8px;
+  }
+
+  .col-code {
+    width: 116px;
+  }
+
+  .col-sku {
+    width: 168px;
+  }
+
+  .col-category,
+  .col-status {
+    width: 116px;
+  }
+
+  .hide-sm {
+    display: none;
+  }
+
+  .col-number {
+    width: 74px;
+  }
+
+  .split-page {
+    position: relative;
+  }
+
+  .details-region {
+    inset: 0;
+    width: 100% !important;
+  }
+
+  .dialog-grid,
+  .request-line {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-input {
+    min-width: 0;
+  }
+}

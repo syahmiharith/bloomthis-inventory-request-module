@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { handleRouteError } from "@/lib/http";
-import { getDashboardSummary } from "@/services/dashboard.service";
+import { getDashboardSummary } from "@/features/dashboard/services/dashboard.service";
 
 export async function GET() {
   try {

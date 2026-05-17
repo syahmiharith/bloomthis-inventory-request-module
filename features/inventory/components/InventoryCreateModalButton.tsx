@@ -2,13 +2,9 @@
 
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
-import { RequestForm } from "./new/RequestForm";
+import { InventoryItemForm } from "./InventoryItemForm";
 
-export function RequestCreateModalButton({
-  requesterName,
-}: {
-  requesterName: string;
-}) {
+export function InventoryCreateModalButton() {
   const [open, setOpen] = useState(false);
 
   return (
@@ -19,14 +15,9 @@ export function RequestCreateModalButton({
         type="button"
       >
         <PlusCircle size={16} />
-        Create Request
+        Add Item
       </button>
-      {open ? (
-        <RequestForm
-          onClose={() => setOpen(false)}
-          requesterName={requesterName}
-        />
-      ) : null}
+      {open ? <InventoryItemForm onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

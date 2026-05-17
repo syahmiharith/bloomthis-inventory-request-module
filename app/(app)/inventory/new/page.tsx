@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
-import { InventoryWorkspace } from "../InventoryWorkspace";
-import { InventoryItemForm } from "./InventoryItemForm";
+import { InventoryItemForm } from "@/features/inventory/components/InventoryItemForm";
+import { InventoryWorkspace } from "@/features/inventory/components/InventoryWorkspace";
 
 type NewInventoryItemPageProps = {
   searchParams?: Promise<{

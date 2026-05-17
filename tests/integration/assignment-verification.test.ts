@@ -7,8 +7,11 @@ import {
   requestHistory,
   users,
 } from "@/db/schema";
-import { createItem } from "@/services/item.service";
-import { createRequest, updateRequestStatus } from "@/services/request.service";
+import { createItem } from "@/features/inventory/services/inventory.service";
+import {
+  createRequest,
+  updateRequestStatus,
+} from "@/features/requests/services/request.service";
 import { resetDatabase } from "./test-db";
 
 async function createUsers() {

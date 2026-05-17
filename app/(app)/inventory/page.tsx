@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import {
   InventoryWorkspace,
   type InventoryWorkspaceSearchParams,
-} from "./InventoryWorkspace";
+} from "@/features/inventory/components/InventoryWorkspace";
 
 type InventoryPageProps = {
   searchParams?: Promise<InventoryWorkspaceSearchParams>;

@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { revalidateRequestReads } from "@/lib/cache-tags";
 import type { RequestStatus } from "@/lib/constants";
-import { updateRequestStatus } from "@/services/request.service";
+import { updateRequestStatus } from "@/features/requests/services/request.service";
 
-export async function updateRequestDetailStatusAction(formData: FormData) {
+export async function updateRequestStatusAction(formData: FormData) {
   const actor = await requireAdmin();
   const requestId = String(formData.get("requestId") ?? "");
   const status = String(formData.get("status") ?? "") as RequestStatus;
@@ -37,11 +37,11 @@ export async function updateRequestDetailStatusAction(formData: FormData) {
 
   if (errorMessage) {
     const params = new URLSearchParams({ error: errorMessage });
-    redirect(`/requests/${requestId}?${params.toString()}`);
+    redirect(`/requests?${params.toString()}`);
   }
 
   const params = new URLSearchParams({
     success: `Request ${status} successfully.`,
   });
-  redirect(`/requests/${requestId}?${params.toString()}`);
+  redirect(`/requests?${params.toString()}`);
 }

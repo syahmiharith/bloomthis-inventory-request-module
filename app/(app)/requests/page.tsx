@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import {
   RequestsWorkspace,
   type RequestWorkspaceSearchParams,
-} from "./RequestsWorkspace";
+} from "@/features/requests/components/RequestsWorkspace";
 
 type RequestsPageProps = {
   searchParams?: Promise<RequestWorkspaceSearchParams>;

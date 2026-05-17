@@ -9,7 +9,7 @@ import {
 import {
   getDashboardPageData,
   getDashboardSummary,
-} from "@/services/dashboard.service";
+} from "@/features/dashboard/services/dashboard.service";
 import { resetDatabase } from "./test-db";
 
 describe("dashboard summaries", () => {

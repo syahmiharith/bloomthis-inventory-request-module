@@ -9,7 +9,10 @@ import {
   requestHistory,
   users,
 } from "@/db/schema";
-import { createRequest, updateRequestStatus } from "@/services/request.service";
+import {
+  createRequest,
+  updateRequestStatus,
+} from "@/features/requests/services/request.service";
 import { resetDatabase } from "./test-db";
 
 async function createFixture(

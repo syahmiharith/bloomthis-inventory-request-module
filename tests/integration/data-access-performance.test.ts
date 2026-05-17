@@ -11,8 +11,11 @@ import {
   getItemById,
   listItems,
   listRequestableItems,
-} from "@/services/item.service";
-import { getRequestById, listRequests } from "@/services/request.service";
+} from "@/features/inventory/services/inventory.service";
+import {
+  getRequestById,
+  listRequests,
+} from "@/features/requests/services/request.service";
 import { resetDatabase } from "./test-db";
 
 describe("bounded data access", () => {

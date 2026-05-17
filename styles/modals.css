@@ -1,0 +1,167 @@
+/* Modal, dialog, and request-line form styles. */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.3);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-route {
+  position: relative;
+}
+
+.form-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.42);
+  padding: 24px;
+  animation: modal-backdrop-enter 140ms ease both;
+}
+
+.form-modal {
+  display: grid;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  animation: modal-enter 160ms ease both;
+}
+
+@keyframes modal-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.form-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 18px 20px;
+}
+
+.form-modal-header h2,
+.confirm-dialog h3 {
+  margin: 0;
+}
+
+.form-modal-header p,
+.confirm-dialog p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.form-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.44);
+  padding: 20px;
+}
+
+.confirm-dialog {
+  display: grid;
+  width: min(420px, 100%);
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 20px;
+  box-shadow: 0 22px 52px rgba(15, 23, 42, 0.22);
+}
+
+.empty-modal-state {
+  display: grid;
+  gap: 16px;
+}
+
+.dialog {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.request-dialog {
+  width: min(720px, 100%);
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.request-lines {
+  display: grid;
+  gap: 14px;
+}
+
+.request-lines-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.request-lines-header h3 {
+  margin: 0;
+}
+
+.request-line {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 120px 110px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.line-warning {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.remove-line {
+  align-self: end;
+}
+
+.compact-input {
+  min-width: 220px;
+}

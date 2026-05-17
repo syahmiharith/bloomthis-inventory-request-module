@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { revalidateRequestReads } from "@/lib/cache-tags";
 import { handleRouteError } from "@/lib/http";
-import { updateRequestStatus } from "@/services/request.service";
+import { updateRequestStatus } from "@/features/requests/services/request.service";
 
 export async function PATCH(
   request: Request,

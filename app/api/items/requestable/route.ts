@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/http";
-import { listRequestableItems } from "@/services/item.service";
+import { listRequestableItems } from "@/features/inventory/services/inventory.service";
 
 export async function GET(request: Request) {
   try {

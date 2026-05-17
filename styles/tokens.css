@@ -1,0 +1,12 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --border: #dfe3e8;
+  --text: #18212f;
+  --muted: #667085;
+  --blue: #2563eb;
+  --green: #15803d;
+  --red: #dc2626;
+  --amber: #d97706;
+}
