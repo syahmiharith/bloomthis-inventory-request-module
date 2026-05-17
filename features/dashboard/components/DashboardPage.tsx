@@ -54,8 +54,7 @@ export default async function HomePage() {
     requests: kpiData.requests,
   };
   const urgent = normalizeUrgentData(priority.data.data);
-  const hasDashboardDataIssue =
-    !kpis.available || !priority.available || !recent.available;
+  const hasDashboardDataIssue = !kpis.available;
   const hasStaleDashboardData =
     kpis.data.stale || priority.data.stale || recent.data.stale;
   const isAdmin = currentUser.role === "admin";
@@ -83,7 +82,10 @@ export default async function HomePage() {
       className="page-scroll main-scroll-region route-page dashboard-route"
       data-testid="main-scroll-region"
     >
-      <section data-analytics-view="dashboard_viewed" data-testid="dashboard-page">
+      <section
+        data-analytics-view="dashboard_viewed"
+        data-testid="dashboard-page"
+      >
         <PageHeader
           title={isAdmin ? "Operations Cockpit" : "My Request Cockpit"}
           description={
@@ -581,7 +583,11 @@ function PanelFooter({
   label?: string;
 }) {
   return (
-    <Link className="panel-footer-link" data-analytics={analyticsName} href={href}>
+    <Link
+      className="panel-footer-link"
+      data-analytics={analyticsName}
+      href={href}
+    >
       {label}
       <ArrowRight />
     </Link>

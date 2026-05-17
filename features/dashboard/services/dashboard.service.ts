@@ -404,70 +404,70 @@ async function getUrgentDashboardRaw(
     restockRecommendationRows,
     recentActivity,
   ] = await Promise.all([
-      db
-        .select({
-          pending: sql<number>`count(*) filter (where ${inventoryRequests.status} = 'pending')::int`,
-          approvedWaiting: sql<number>`count(*) filter (where ${inventoryRequests.status} = 'approved')::int`,
-          highPriorityPending: sql<number>`count(*) filter (
+    db
+      .select({
+        pending: sql<number>`count(*) filter (where ${inventoryRequests.status} = 'pending')::int`,
+        approvedWaiting: sql<number>`count(*) filter (where ${inventoryRequests.status} = 'approved')::int`,
+        highPriorityPending: sql<number>`count(*) filter (
             where ${inventoryRequests.status} = 'pending' and ${inventoryRequests.priority} = 'high'
           )::int`,
-          overdue: sql<number>`count(*) filter (
+        overdue: sql<number>`count(*) filter (
             where ${inventoryRequests.status} in ('pending', 'approved')
             and ${inventoryRequests.requiredBy} < ${now.toISOString()}::timestamptz
           )::int`,
-          requiredSoon: sql<number>`count(*) filter (
+        requiredSoon: sql<number>`count(*) filter (
             where ${inventoryRequests.status} in ('pending', 'approved')
             and ${inventoryRequests.requiredBy} >= ${now.toISOString()}::timestamptz
             and ${inventoryRequests.requiredBy} <= ${soon.toISOString()}::timestamptz
           )::int`,
-          blockedFulfillment: sql<number>`count(*) filter (
+        blockedFulfillment: sql<number>`count(*) filter (
             where ${inventoryRequests.status} = 'approved'
             and exists (
               select 1
               from inventory_request_items iri
               inner join inventory_items ii on ii.id = iri.item_id
-              where iri.request_id = ${inventoryRequests.id}
+              where iri.request_id = "inventory_requests"."id"
               and ii.quantity_on_hand - ii.quantity_reserved < iri.quantity_requested
             )
           )::int`,
-        })
-        .from(inventoryRequests)
-        .where(scopeCondition),
-      db
-        .select({
-          id: inventoryRequests.id,
-          requestCode: inventoryRequests.requestCode,
-          requesterName: users.name,
-          department: inventoryRequests.department,
-          requiredBy: inventoryRequests.requiredBy,
-          priority: inventoryRequests.priority,
-          status: inventoryRequests.status,
-          available: sql<number>`min(${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved})`,
-          reorderPoint: sql<number>`max(${inventoryItems.reorderPoint})`,
-          shortLines: sql<number>`count(*) filter (
+      })
+      .from(inventoryRequests)
+      .where(scopeCondition),
+    db
+      .select({
+        id: inventoryRequests.id,
+        requestCode: inventoryRequests.requestCode,
+        requesterName: users.name,
+        department: inventoryRequests.department,
+        requiredBy: inventoryRequests.requiredBy,
+        priority: inventoryRequests.priority,
+        status: inventoryRequests.status,
+        available: sql<number>`min(${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved})`,
+        reorderPoint: sql<number>`max(${inventoryItems.reorderPoint})`,
+        shortLines: sql<number>`count(*) filter (
             where ${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} < ${inventoryRequestItems.quantityRequested}
           )::int`,
-          totalQuantity: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`,
-        })
-        .from(inventoryRequests)
-        .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
-        .leftJoin(
-          inventoryRequestItems,
-          eq(inventoryRequestItems.requestId, inventoryRequests.id),
-        )
-        .leftJoin(
-          inventoryItems,
-          eq(inventoryRequestItems.itemId, inventoryItems.id),
-        )
-        .where(
-          and(
-            scopeCondition,
-            inArray(inventoryRequests.status, ["pending", "approved"]),
-          ),
-        )
-        .groupBy(inventoryRequests.id, users.name)
-        .orderBy(
-          sql`case
+        totalQuantity: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`,
+      })
+      .from(inventoryRequests)
+      .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+      .leftJoin(
+        inventoryRequestItems,
+        eq(inventoryRequestItems.requestId, inventoryRequests.id),
+      )
+      .leftJoin(
+        inventoryItems,
+        eq(inventoryRequestItems.itemId, inventoryItems.id),
+      )
+      .where(
+        and(
+          scopeCondition,
+          inArray(inventoryRequests.status, ["pending", "approved"]),
+        ),
+      )
+      .groupBy(inventoryRequests.id, users.name)
+      .orderBy(
+        sql`case
             when ${inventoryRequests.status} = 'approved'
               and count(*) filter (
                 where ${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} < ${inventoryRequestItems.quantityRequested}
@@ -478,107 +478,111 @@ async function getUrgentDashboardRaw(
             when ${inventoryRequests.requiredBy} <= ${soon.toISOString()}::timestamptz then 4
             else 5
           end`,
-          asc(inventoryRequests.requiredBy),
-        )
-        .limit(5),
-      db
-        .select({
-          id: inventoryItems.id,
-          sku: inventoryItems.sku,
-          name: inventoryItems.name,
-          warehouse: inventoryItems.warehouse,
-          available: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
-          reorderPoint: inventoryItems.reorderPoint,
-          pendingDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+        asc(inventoryRequests.requiredBy),
+      )
+      .limit(5),
+    db
+      .select({
+        id: inventoryItems.id,
+        sku: inventoryItems.sku,
+        name: inventoryItems.name,
+        warehouse: inventoryItems.warehouse,
+        available: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+        reorderPoint: inventoryItems.reorderPoint,
+        pendingDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
             where ${inventoryRequests.status} in ('pending', 'approved')
           ), 0)::int`,
-        })
-        .from(inventoryItems)
-        .leftJoin(
-          inventoryRequestItems,
-          eq(inventoryRequestItems.itemId, inventoryItems.id),
-        )
-        .leftJoin(
-          inventoryRequests,
-          eq(inventoryRequestItems.requestId, inventoryRequests.id),
-        )
-        .where(
-          lte(
-            sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
-            inventoryItems.reorderPoint,
-          ),
-        )
-        .groupBy(inventoryItems.id)
-        .having(sql`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+      })
+      .from(inventoryItems)
+      .leftJoin(
+        inventoryRequestItems,
+        eq(inventoryRequestItems.itemId, inventoryItems.id),
+      )
+      .leftJoin(
+        inventoryRequests,
+        eq(inventoryRequestItems.requestId, inventoryRequests.id),
+      )
+      .where(
+        lte(
+          sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+          inventoryItems.reorderPoint,
+        ),
+      )
+      .groupBy(inventoryItems.id)
+      .having(
+        sql`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
           where ${inventoryRequests.status} in ('pending', 'approved')
-        ), 0) > 0`)
-        .orderBy(
-          asc(
-            sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
-          ),
-          asc(inventoryItems.name),
-        )
-        .limit(5),
-      db
-        .select({
-          id: inventoryItems.id,
-          sku: inventoryItems.sku,
-          name: inventoryItems.name,
-          warehouse: inventoryItems.warehouse,
-          available: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
-          activeDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+        ), 0) > 0`,
+      )
+      .orderBy(
+        asc(
+          sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+        ),
+        asc(inventoryItems.name),
+      )
+      .limit(5),
+    db
+      .select({
+        id: inventoryItems.id,
+        sku: inventoryItems.sku,
+        name: inventoryItems.name,
+        warehouse: inventoryItems.warehouse,
+        available: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+        activeDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
             where ${inventoryRequests.status} in ('pending', 'approved')
           ), 0)::int`,
-          suggestedRestockQty: sql<number>`greatest(
+        suggestedRestockQty: sql<number>`greatest(
             coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
               where ${inventoryRequests.status} in ('pending', 'approved')
             ), 0) - (${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}),
             0
           )::int`,
-        })
-        .from(inventoryItems)
-        .leftJoin(
-          inventoryRequestItems,
-          eq(inventoryRequestItems.itemId, inventoryItems.id),
-        )
-        .leftJoin(
-          inventoryRequests,
-          eq(inventoryRequestItems.requestId, inventoryRequests.id),
-        )
-        .groupBy(inventoryItems.id)
-        .having(sql`greatest(
+      })
+      .from(inventoryItems)
+      .leftJoin(
+        inventoryRequestItems,
+        eq(inventoryRequestItems.itemId, inventoryItems.id),
+      )
+      .leftJoin(
+        inventoryRequests,
+        eq(inventoryRequestItems.requestId, inventoryRequests.id),
+      )
+      .groupBy(inventoryItems.id)
+      .having(
+        sql`greatest(
           coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
             where ${inventoryRequests.status} in ('pending', 'approved')
           ), 0) - (${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}),
           0
-        ) > 0`)
-        .orderBy(
-          desc(sql`greatest(
+        ) > 0`,
+      )
+      .orderBy(
+        desc(sql`greatest(
             coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
               where ${inventoryRequests.status} in ('pending', 'approved')
             ), 0) - (${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}),
             0
           )`),
-          asc(inventoryItems.name),
-        )
-        .limit(5),
-      db
-        .select({
-          id: auditLogs.id,
-          action: auditLogs.action,
-          actorName: auditLogs.actorName,
-          requestCode: inventoryRequests.requestCode,
-          createdAt: auditLogs.createdAt,
-        })
-        .from(auditLogs)
-        .leftJoin(
-          inventoryRequests,
-          eq(auditLogs.requestId, inventoryRequests.id),
-        )
-        .where(scopeCondition)
-        .orderBy(desc(auditLogs.createdAt))
-        .limit(5),
-    ]);
+        asc(inventoryItems.name),
+      )
+      .limit(5),
+    db
+      .select({
+        id: auditLogs.id,
+        action: auditLogs.action,
+        actorName: auditLogs.actorName,
+        requestCode: inventoryRequests.requestCode,
+        createdAt: auditLogs.createdAt,
+      })
+      .from(auditLogs)
+      .leftJoin(
+        inventoryRequests,
+        eq(auditLogs.requestId, inventoryRequests.id),
+      )
+      .where(scopeCondition)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(5),
+  ]);
 
   const inventoryRisk = inventoryRiskRows.map((item) => ({
     ...item,

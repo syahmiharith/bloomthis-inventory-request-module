@@ -182,13 +182,7 @@ async function listItemsRaw(
       .where(whereClause)
       .groupBy(inventoryItems.id)
       .orderBy(
-        ...getItemOrderBy(
-          sort,
-          dir,
-          available,
-          stockHealthPercent,
-          stockRank,
-        ),
+        ...getItemOrderBy(sort, dir, available, stockHealthPercent, stockRank),
       )
       .limit(pageSize)
       .offset((safePage - 1) * pageSize),

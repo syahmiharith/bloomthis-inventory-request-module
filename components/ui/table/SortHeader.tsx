@@ -18,7 +18,8 @@ export function SortHeader({
   sortKey: string;
 }) {
   const isActive = activeSort === sortKey;
-  const nextDir: SortDirection = isActive && activeDir === "asc" ? "desc" : "asc";
+  const nextDir: SortDirection =
+    isActive && activeDir === "asc" ? "desc" : "asc";
   const search = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {

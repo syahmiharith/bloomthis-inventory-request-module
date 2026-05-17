@@ -31,7 +31,10 @@ export function RequestImpactList({
               </div>
               <div className="request-impact-numbers">
                 <ImpactNumber label="Current" value={item.availableQuantity} />
-                <ImpactNumber label="Requested" value={item.requestedQuantity} />
+                <ImpactNumber
+                  label="Requested"
+                  value={item.requestedQuantity}
+                />
                 <ImpactNumber
                   label="After"
                   value={
@@ -53,13 +56,7 @@ export function RequestImpactList({
   );
 }
 
-function ImpactNumber({
-  label,
-  value,
-}: {
-  label: string;
-  value: ReactNode;
-}) {
+function ImpactNumber({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="impact-number">
       <span>{label}</span>

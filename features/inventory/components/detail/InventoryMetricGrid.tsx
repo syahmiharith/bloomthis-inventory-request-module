@@ -21,7 +21,10 @@ export function InventoryMetricGrid({ item }: { item: InventoryItemDetail }) {
         <MetricCard label="Reserved" value={item.quantityReserved} />
         <MetricCard label="Active demand" value={item.activeDemand} />
         <MetricCard label="Pending requests" value={item.pendingRequestCount} />
-        <MetricCard label="Approved requests" value={item.approvedRequestCount} />
+        <MetricCard
+          label="Approved requests"
+          value={item.approvedRequestCount}
+        />
         <MetricCard label="Risk label" value={status} />
       </div>
     </section>

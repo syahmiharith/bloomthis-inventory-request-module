@@ -198,7 +198,10 @@ export async function RequestsWorkspace({
                 <button className="button button-secondary" type="submit">
                   Filter
                 </button>
-                {query || selectedStatus || selectedCategory || searchParams.sort ? (
+                {query ||
+                selectedStatus ||
+                selectedCategory ||
+                searchParams.sort ? (
                   <Link className="clear-filter-link" href="/requests">
                     Clear filters
                   </Link>
@@ -238,11 +241,7 @@ export async function RequestsWorkspace({
                 <thead>
                   <tr>
                     <th
-                      aria-sort={sortAria(
-                        "request",
-                        selectedSort,
-                        selectedDir,
-                      )}
+                      aria-sort={sortAria("request", selectedSort, selectedDir)}
                       className="col-code"
                     >
                       <SortHeader
@@ -511,9 +510,7 @@ function StockSummary({
 
   if (shortItems.length === items.length) {
     return (
-      <span className="badge badge-stock-insufficient">
-        Insufficient stock
-      </span>
+      <span className="badge badge-stock-insufficient">Insufficient stock</span>
     );
   }
 

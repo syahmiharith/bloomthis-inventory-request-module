@@ -5,7 +5,9 @@ const supabaseUrl = env.SUPABASE_URL;
 const apiKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !apiKey) {
-  throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY are required.");
+  throw new Error(
+    "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY are required.",
+  );
 }
 
 const headers = {
@@ -153,7 +155,9 @@ async function ensureRequests(users, items) {
     "inventory_requests",
     "id,request_code,requester_id,status,created_at",
   );
-  const existingCodes = new Set(existing.map((request) => request.request_code));
+  const existingCodes = new Set(
+    existing.map((request) => request.request_code),
+  );
   const employees = users.filter((user) => user.role === "employee");
   const admins = users.filter((user) => user.role === "admin");
   const admin = admins[0] ?? users[0];
@@ -199,10 +203,13 @@ async function ensureRequests(users, items) {
   }
 
   const insertedRequests =
-    requestRows.length > 0 ? await insert("inventory_requests", requestRows) : [];
+    requestRows.length > 0
+      ? await insert("inventory_requests", requestRows)
+      : [];
   const lineRows = [];
   for (const [requestIndex, request] of insertedRequests.entries()) {
-    const lineCount = requestIndex % 3 === 0 ? 3 : requestIndex % 2 === 0 ? 2 : 1;
+    const lineCount =
+      requestIndex % 3 === 0 ? 3 : requestIndex % 2 === 0 ? 2 : 1;
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
       const item = items[(requestIndex * 2 + lineIndex) % items.length];
       const quantityRequested = 1 + lineIndex + (requestIndex % 4);

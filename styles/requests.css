@@ -60,7 +60,11 @@
   gap: 14px;
   padding: 16px;
   background:
-    linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0.96)),
+    linear-gradient(
+      135deg,
+      rgba(239, 246, 255, 0.9),
+      rgba(255, 255, 255, 0.96)
+    ),
     #fff;
 }
 

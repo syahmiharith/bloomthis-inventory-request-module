@@ -43,7 +43,10 @@
   border-radius: 999px;
   background:
     radial-gradient(circle at center, var(--surface) 0 58%, transparent 59%),
-    conic-gradient(#14b8a6 0 var(--stock-health), #e2e8f0 var(--stock-health) 360deg);
+    conic-gradient(
+      #14b8a6 0 var(--stock-health),
+      #e2e8f0 var(--stock-health) 360deg
+    );
   color: var(--text);
 }
 
@@ -163,7 +166,11 @@
   gap: 16px;
   padding: 16px;
   background:
-    linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.96)),
+    linear-gradient(
+      135deg,
+      rgba(239, 246, 255, 0.92),
+      rgba(255, 255, 255, 0.96)
+    ),
     #fff;
 }
 

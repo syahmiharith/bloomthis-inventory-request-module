@@ -169,7 +169,10 @@ export async function InventoryWorkspace({
                 <button className="button button-secondary" type="submit">
                   Filter
                 </button>
-                {query || selectedCategory || selectedStock || searchParams.sort ? (
+                {query ||
+                selectedCategory ||
+                selectedStock ||
+                searchParams.sort ? (
                   <Link className="clear-filter-link" href="/inventory">
                     Clear filters
                   </Link>
@@ -376,7 +379,9 @@ export async function InventoryWorkspace({
                           {item.activeDemand > 0 ? (
                             <>
                               <strong>{item.activeDemand}</strong>
-                              <span className="cell-subtext">active demand</span>
+                              <span className="cell-subtext">
+                                active demand
+                              </span>
                             </>
                           ) : (
                             <span className="muted">No active demand</span>

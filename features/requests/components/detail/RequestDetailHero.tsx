@@ -1,5 +1,8 @@
 import { StatusBadge } from "@/components/ui/badges/StatusBadge";
-import { getNextActionSummary, getStockReadinessSummary } from "./RequestStockSummary";
+import {
+  getNextActionSummary,
+  getStockReadinessSummary,
+} from "./RequestStockSummary";
 import type { RequestDetail } from "./types";
 import { formatDateTime } from "./utils";
 

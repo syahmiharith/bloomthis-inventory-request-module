@@ -64,7 +64,9 @@ async function RequestDetailPanelSlot({
   requestPromise: ReturnType<typeof getRequestOrNotFound>;
 }) {
   const request = await requestPromise;
-  return <RequestDetailPanel isAdmin={isAdmin} query={query} request={request} />;
+  return (
+    <RequestDetailPanel isAdmin={isAdmin} query={query} request={request} />
+  );
 }
 
 async function RequestDetailFooterSlot({

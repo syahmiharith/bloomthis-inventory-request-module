@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  ResizableDataTable,
-  type ResizableColumn,
-} from "./ResizableDataTable";
+import { ResizableDataTable, type ResizableColumn } from "./ResizableDataTable";
 
 export function DataTable({
   children,

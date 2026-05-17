@@ -26,7 +26,10 @@ export function ResizableDataTable({
   tableId: string;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
-  const columnMap = useMemo(() => new Map(columns.map((col) => [col.id, col])), [columns]);
+  const columnMap = useMemo(
+    () => new Map(columns.map((col) => [col.id, col])),
+    [columns],
+  );
 
   useEffect(() => {
     const shell = shellRef.current;
@@ -165,5 +168,8 @@ function columnStorageKey(tableId: string, columnId: string) {
 }
 
 function clampColumnWidth(width: number, minWidth: number) {
-  return Math.max(minWidth, Number.isFinite(width) ? Math.round(width) : minWidth);
+  return Math.max(
+    minWidth,
+    Number.isFinite(width) ? Math.round(width) : minWidth,
+  );
 }
