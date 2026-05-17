@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { NotFoundError } from "@/lib/errors";
 import { getRequestById } from "@/services/request.service";
@@ -22,7 +23,7 @@ export default async function RequestDetailPage({
     searchParams,
     getCurrentUser(),
   ]);
-  const request = await getRequestOrNotFound(id, currentUser);
+  const requestPromise = getRequestOrNotFound(id, currentUser);
 
   return (
     <RequestsWorkspace
@@ -30,19 +31,62 @@ export default async function RequestDetailPage({
       selectedRequestId={id}
       searchParams={query ?? {}}
       panel={
-        <RequestDetailPanel
-          isAdmin={currentUser.role === "admin"}
-          query={query}
-          request={request}
-        />
+        <Suspense fallback={<RequestPanelSkeleton />}>
+          <RequestDetailPanelSlot
+            isAdmin={currentUser.role === "admin"}
+            query={query}
+            requestPromise={requestPromise}
+          />
+        </Suspense>
       }
       panelFooter={
-        <RequestDetailFooter
-          isAdmin={currentUser.role === "admin"}
-          request={request}
-        />
+        <Suspense fallback={<p className="muted">Loading actions...</p>}>
+          <RequestDetailFooterSlot
+            isAdmin={currentUser.role === "admin"}
+            requestPromise={requestPromise}
+          />
+        </Suspense>
       }
     />
+  );
+}
+
+async function RequestDetailPanelSlot({
+  isAdmin,
+  query,
+  requestPromise,
+}: {
+  isAdmin: boolean;
+  query: RequestWorkspaceSearchParams | undefined;
+  requestPromise: ReturnType<typeof getRequestOrNotFound>;
+}) {
+  const request = await requestPromise;
+  return <RequestDetailPanel isAdmin={isAdmin} query={query} request={request} />;
+}
+
+async function RequestDetailFooterSlot({
+  isAdmin,
+  requestPromise,
+}: {
+  isAdmin: boolean;
+  requestPromise: ReturnType<typeof getRequestOrNotFound>;
+}) {
+  const request = await requestPromise;
+  return <RequestDetailFooter isAdmin={isAdmin} request={request} />;
+}
+
+function RequestPanelSkeleton() {
+  return (
+    <div className="panel-detail-stack" aria-hidden="true">
+      <section className="panel skeleton-panel-section">
+        <span className="skeleton skeleton-line medium" />
+        <span className="skeleton skeleton-line" />
+      </section>
+      <section className="panel skeleton-panel-section">
+        <span className="skeleton skeleton-line medium" />
+        <span className="skeleton skeleton-line short" />
+      </section>
+    </div>
   );
 }
 

@@ -111,7 +111,7 @@ export default async function HomePage() {
                 icon={<AlertTriangle />}
                 label="Low Stock"
                 value={dashboard.inventory.lowStockItems}
-                note="At or below threshold"
+                note="Needs attention"
                 tone="amber"
               />
               <KpiCard

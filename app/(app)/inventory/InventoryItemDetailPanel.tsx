@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { StockBadge } from "@/components/ui/StockBadge";
 import { stockStatusFromQuantities } from "@/lib/inventory";
 import type { getItemById } from "@/services/item.service";
@@ -49,8 +50,8 @@ export function InventoryItemDetailPanel({
             <dd>{item.available}</dd>
           </div>
           <div>
-            <dt>Low-stock threshold</dt>
-            <dd>{item.reorderPoint}</dd>
+            <dt>Stock health</dt>
+            <dd>{item.stockHealthPercent}% healthy</dd>
           </div>
           <div>
             <dt>On hand</dt>
@@ -60,7 +61,86 @@ export function InventoryItemDetailPanel({
             <dt>Reserved</dt>
             <dd>{item.quantityReserved}</dd>
           </div>
+          <div>
+            <dt>Active demand</dt>
+            <dd>{item.activeDemand}</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>{formatDate(item.updatedAt)}</dd>
+          </div>
         </dl>
+      </section>
+
+      <section className="panel item-details-panel">
+        <h3>Stock Analytics</h3>
+        <div className="stock-health-grid">
+          <div>
+            <span>Pending requests</span>
+            <strong>{item.pendingRequestCount}</strong>
+          </div>
+          <div>
+            <span>Approved requests</span>
+            <strong>{item.approvedRequestCount}</strong>
+          </div>
+          <div>
+            <span>Risk label</span>
+            <strong>{status}</strong>
+          </div>
+        </div>
+        <div className="stock-health-detail">
+          <span
+            aria-label={`Stock health ${item.stockHealthPercent} percent`}
+            className="stock-health-meter"
+            role="meter"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={item.stockHealthPercent}
+          >
+            <span style={{ width: `${item.stockHealthPercent}%` }} />
+          </span>
+          <p>
+            Health compares available stock with the internal operating target
+            for this item.
+          </p>
+        </div>
+      </section>
+
+      <section className="panel item-details-panel">
+        <h3>Recent Request Activity</h3>
+        <div className="related-request-list">
+          {item.recentRequests.length === 0 ? (
+            <p className="muted">No recent requests for this item.</p>
+          ) : null}
+          {item.recentRequests.map((request) => (
+            <article key={request.id}>
+              <a className="mono-cell" href={`/requests/${request.id}`}>
+                {request.requestCode}
+              </a>
+              <StatusBadge status={request.status} />
+              <span>{request.requesterName}</span>
+              <span>
+                {request.quantityRequested} {request.unit}
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel item-details-panel">
+        <h3>Recent Fulfillment Activity</h3>
+        <div className="item-activity-list">
+          {item.recentFulfillments.length === 0 ? (
+            <p className="muted">No recent fulfillments for this item.</p>
+          ) : null}
+          {item.recentFulfillments.map((entry) => (
+            <article key={entry.id}>
+              <strong>{entry.requestCode ?? "Fulfillment"}</strong>
+              <span>{entry.actorName}</span>
+              <time>{formatDate(entry.createdAt)}</time>
+            </article>
+          ))}
+        </div>
       </section>
     </div>
   );
@@ -74,7 +154,16 @@ export function InventoryItemDetailFooter({
   item: InventoryItemDetail;
 }) {
   if (isAdmin) {
-    return <p className="muted">No item editing actions are enabled.</p>;
+    return (
+      <div className="item-panel-actions">
+        <a className="button button-secondary" href={`/requests?status=pending&q=${encodeURIComponent(item.sku)}`}>
+          View pending requests
+        </a>
+        <a className="button button-primary" href={`/requests?status=approved&q=${encodeURIComponent(item.sku)}`}>
+          Review approved requests
+        </a>
+      </div>
+    );
   }
 
   if (item.available <= 0) {
@@ -93,4 +182,11 @@ export function InventoryItemDetailFooter({
       Request Item
     </a>
   );
+}
+
+function formatDate(value: Date | string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }

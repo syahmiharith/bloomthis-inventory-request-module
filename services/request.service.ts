@@ -27,7 +27,8 @@ type RequestSortKey =
   | "quantity"
   | "status"
   | "stock"
-  | "created";
+  | "created"
+  | "requiredBy";
 type SortDirection = "asc" | "desc";
 
 export async function listRequests(
@@ -149,6 +150,7 @@ async function listRequestsRaw(
   const totalQuantity = sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`;
   const firstItemName = sql<string>`min(${inventoryItems.name})`;
   const shortLineCount = sql<number>`coalesce(sum(case when ${available} < ${inventoryRequestItems.quantityRequested} then 1 else 0 end), 0)::int`;
+  const lineCount = sql<number>`count(${inventoryRequestItems.id})::int`;
   const statusRank = sql<number>`case
     when ${inventoryRequests.status} = 'pending' then 0
     when ${inventoryRequests.status} = 'approved' then 1
@@ -156,10 +158,11 @@ async function listRequestsRaw(
     else 3
   end`;
   const stockReadinessRank = sql<number>`case
-    when ${inventoryRequests.status} = 'fulfilled' then 2
-    when ${inventoryRequests.status} = 'rejected' then 3
-    when ${shortLineCount} > 0 then 0
-    else 1
+    when ${inventoryRequests.status} = 'fulfilled' then 3
+    when ${inventoryRequests.status} = 'rejected' then 4
+    when ${lineCount} > 0 and ${shortLineCount} = ${lineCount} then 0
+    when ${shortLineCount} > 0 then 1
+    else 2
   end`;
 
   const [totalRow] = await db
@@ -228,6 +231,7 @@ async function listRequestsRaw(
     rows: requests.map((request) => ({
       ...request,
       createdAt: request.createdAt.toISOString(),
+      requiredBy: request.requiredBy.toISOString(),
       items: itemsByRequest.get(request.id) ?? [],
     })),
     totalCount,
@@ -258,7 +262,9 @@ function getRequestOrderBy(
               ? statusRank
               : sort === "stock"
                 ? stockReadinessRank
-                : inventoryRequests.createdAt;
+                : sort === "requiredBy"
+                  ? inventoryRequests.requiredBy
+                  : inventoryRequests.createdAt;
 
   return [
     byDirection(primary),

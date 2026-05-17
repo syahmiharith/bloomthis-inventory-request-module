@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { DataTable } from "@/components/ui/DataTable";
 import { DataToolbar } from "@/components/ui/DataToolbar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Pagination } from "@/components/ui/Pagination";
+import { ColumnResizeHandle } from "@/components/ui/ResizableDataTable";
 import { SortHeader, sortAria } from "@/components/ui/SortHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { User } from "@/db/schema";
@@ -39,8 +41,19 @@ const requestSortKeys = [
   "status",
   "stock",
   "created",
+  "requiredBy",
 ] as const;
 const sortDirections = ["asc", "desc"] as const;
+const requestTableColumns = [
+  { id: "request", defaultWidth: 180, minWidth: 140 },
+  { id: "requester", defaultWidth: 230, minWidth: 170 },
+  { id: "items", defaultWidth: 360, minWidth: 220 },
+  { id: "quantity", defaultWidth: 92, minWidth: 76 },
+  { id: "status", defaultWidth: 140, minWidth: 120 },
+  { id: "stock", defaultWidth: 170, minWidth: 140 },
+  { id: "created", defaultWidth: 120, minWidth: 100 },
+  { id: "action", defaultWidth: 48, minWidth: 44 },
+];
 type RequestRow = Awaited<ReturnType<typeof listRequests>>["rows"][number];
 type RequestItemRow = RequestRow["items"][number];
 
@@ -217,7 +230,11 @@ export async function RequestsWorkspace({
                   : "You have no demo-user requests in this view."}
               </EmptyState>
             ) : (
-              <DataTable className="requests-table">
+              <DataTable
+                className="requests-table"
+                columns={requestTableColumns}
+                tableId="requests-table"
+              >
                 <thead>
                   <tr>
                     <th
@@ -240,6 +257,11 @@ export async function RequestsWorkspace({
                         }}
                         sortKey="request"
                       />
+                      <ColumnResizeHandle
+                        columnId="request"
+                        minWidth={140}
+                        tableId="requests-table"
+                      />
                     </th>
                     <th
                       aria-sort={sortAria(
@@ -261,6 +283,11 @@ export async function RequestsWorkspace({
                         }}
                         sortKey="requester"
                       />
+                      <ColumnResizeHandle
+                        columnId="requester"
+                        minWidth={170}
+                        tableId="requests-table"
+                      />
                     </th>
                     <th
                       aria-sort={sortAria("items", selectedSort, selectedDir)}
@@ -277,6 +304,11 @@ export async function RequestsWorkspace({
                           status: selectedStatus ?? "",
                         }}
                         sortKey="items"
+                      />
+                      <ColumnResizeHandle
+                        columnId="items"
+                        minWidth={220}
+                        tableId="requests-table"
                       />
                     </th>
                     <th
@@ -299,6 +331,11 @@ export async function RequestsWorkspace({
                         }}
                         sortKey="quantity"
                       />
+                      <ColumnResizeHandle
+                        columnId="quantity"
+                        minWidth={76}
+                        tableId="requests-table"
+                      />
                     </th>
                     <th
                       aria-sort={sortAria("status", selectedSort, selectedDir)}
@@ -315,6 +352,11 @@ export async function RequestsWorkspace({
                           status: selectedStatus ?? "",
                         }}
                         sortKey="status"
+                      />
+                      <ColumnResizeHandle
+                        columnId="status"
+                        minWidth={120}
+                        tableId="requests-table"
                       />
                     </th>
                     <th
@@ -333,6 +375,11 @@ export async function RequestsWorkspace({
                         }}
                         sortKey="stock"
                       />
+                      <ColumnResizeHandle
+                        columnId="stock"
+                        minWidth={140}
+                        tableId="requests-table"
+                      />
                     </th>
                     <th
                       aria-sort={sortAria("created", selectedSort, selectedDir)}
@@ -350,6 +397,14 @@ export async function RequestsWorkspace({
                         }}
                         sortKey="created"
                       />
+                      <ColumnResizeHandle
+                        columnId="created"
+                        minWidth={100}
+                        tableId="requests-table"
+                      />
+                    </th>
+                    <th className="col-action">
+                      <span className="sr-only">Open details</span>
                     </th>
                   </tr>
                 </thead>
@@ -370,8 +425,8 @@ export async function RequestsWorkspace({
                             {request.requestCode}
                           </strong>
                           <span className="cell-subtext">
-                            {capitalize(request.priority)} ·{" "}
-                            {formatDate(request.createdAt)}
+                            Due {formatDate(request.requiredBy)} ·{" "}
+                            {capitalize(request.priority)}
                           </span>
                         </td>
                         <td title={request.requesterName}>
@@ -395,6 +450,9 @@ export async function RequestsWorkspace({
                         </td>
                         <td className="hide-md">
                           {formatDate(request.createdAt)}
+                        </td>
+                        <td className="row-chevron-cell">
+                          <ChevronRight aria-hidden="true" />
                         </td>
                       </ClickableRow>
                     );
@@ -422,55 +480,6 @@ export async function RequestsWorkspace({
       </main>
     </WorkspaceLayout>
   );
-}
-
-function Pagination({
-  basePath,
-  page,
-  pageCount,
-  searchParams,
-}: {
-  basePath: string;
-  page: number;
-  pageCount: number;
-  searchParams: Record<string, string>;
-}) {
-  return (
-    <div className="pagination-row">
-      <span>
-        Page {page} of {pageCount}
-      </span>
-      <div>
-        <Link
-          aria-disabled={page <= 1}
-          className="button button-secondary button-compact"
-          href={pageHref(basePath, searchParams, page - 1)}
-        >
-          Previous
-        </Link>
-        <Link
-          aria-disabled={page >= pageCount}
-          className="button button-secondary button-compact"
-          href={pageHref(basePath, searchParams, page + 1)}
-        >
-          Next
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function pageHref(
-  basePath: string,
-  searchParams: Record<string, string>,
-  page: number,
-) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (value) params.set(key, value);
-  }
-  params.set("page", String(Math.max(1, page)));
-  return `${basePath}?${params.toString()}`;
 }
 
 function StockSummary({

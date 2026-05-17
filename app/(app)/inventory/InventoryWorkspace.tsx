@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
 import { ClickableRow } from "@/components/ui/ClickableRow";
 import { DataTable } from "@/components/ui/DataTable";
 import { DataToolbar } from "@/components/ui/DataToolbar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Pagination } from "@/components/ui/Pagination";
+import { ColumnResizeHandle } from "@/components/ui/ResizableDataTable";
 import { SortHeader, sortAria } from "@/components/ui/SortHeader";
 import { StockBadge } from "@/components/ui/StockBadge";
 import type { User } from "@/db/schema";
@@ -30,10 +32,20 @@ const inventorySortKeys = [
   "sku",
   "category",
   "available",
-  "threshold",
+  "stockHealth",
   "status",
+  "updated",
 ] as const;
 const sortDirections = ["asc", "desc"] as const;
+const inventoryTableColumns = [
+  { id: "item", defaultWidth: 320, minWidth: 220 },
+  { id: "sku", defaultWidth: 210, minWidth: 170 },
+  { id: "available", defaultWidth: 150, minWidth: 120 },
+  { id: "health", defaultWidth: 220, minWidth: 170 },
+  { id: "demand", defaultWidth: 150, minWidth: 120 },
+  { id: "updated", defaultWidth: 130, minWidth: 110 },
+  { id: "action", defaultWidth: 48, minWidth: 44 },
+];
 
 export async function InventoryWorkspace({
   currentUser,
@@ -180,7 +192,11 @@ export async function InventoryWorkspace({
                 No inventory items match this view.
               </EmptyState>
             ) : (
-              <DataTable className="inventory-table">
+              <DataTable
+                className="inventory-table"
+                columns={inventoryTableColumns}
+                tableId="inventory-table"
+              >
                 <thead>
                   <tr>
                     <th
@@ -199,6 +215,11 @@ export async function InventoryWorkspace({
                         }}
                         sortKey="name"
                       />
+                      <ColumnResizeHandle
+                        columnId="item"
+                        minWidth={220}
+                        tableId="inventory-table"
+                      />
                     </th>
                     <th
                       aria-sort={sortAria("sku", selectedSort, selectedDir)}
@@ -216,26 +237,10 @@ export async function InventoryWorkspace({
                         }}
                         sortKey="sku"
                       />
-                    </th>
-                    <th
-                      aria-sort={sortAria(
-                        "category",
-                        selectedSort,
-                        selectedDir,
-                      )}
-                      className="col-category hide-sm"
-                    >
-                      <SortHeader
-                        activeDir={selectedDir}
-                        activeSort={selectedSort}
-                        basePath="/inventory"
-                        label="Category"
-                        params={{
-                          category: selectedCategory,
-                          q: query,
-                          stock: selectedStock,
-                        }}
-                        sortKey="category"
+                      <ColumnResizeHandle
+                        columnId="sku"
+                        minWidth={170}
+                        tableId="inventory-table"
                       />
                     </th>
                     <th
@@ -258,46 +263,70 @@ export async function InventoryWorkspace({
                         }}
                         sortKey="available"
                       />
+                      <ColumnResizeHandle
+                        columnId="available"
+                        minWidth={120}
+                        tableId="inventory-table"
+                      />
                     </th>
-                    {isAdmin ? (
-                      <th
-                        aria-sort={sortAria(
-                          "threshold",
-                          selectedSort,
-                          selectedDir,
-                        )}
-                        className="col-number hide-md"
-                      >
-                        <SortHeader
-                          activeDir={selectedDir}
-                          activeSort={selectedSort}
-                          basePath="/inventory"
-                          label="Threshold"
-                          params={{
-                            category: selectedCategory,
-                            q: query,
-                            stock: selectedStock,
-                          }}
-                          sortKey="threshold"
-                        />
-                      </th>
-                    ) : null}
                     <th
-                      aria-sort={sortAria("status", selectedSort, selectedDir)}
-                      className="col-status"
+                      aria-sort={sortAria(
+                        "stockHealth",
+                        selectedSort,
+                        selectedDir,
+                      )}
+                      className="col-stock-health"
                     >
                       <SortHeader
                         activeDir={selectedDir}
                         activeSort={selectedSort}
                         basePath="/inventory"
-                        label="Status"
+                        label="Stock Health"
                         params={{
                           category: selectedCategory,
                           q: query,
                           stock: selectedStock,
                         }}
-                        sortKey="status"
+                        sortKey="stockHealth"
                       />
+                      <ColumnResizeHandle
+                        columnId="health"
+                        minWidth={170}
+                        tableId="inventory-table"
+                      />
+                    </th>
+                    <th className="col-demand">
+                      Demand
+                      <ColumnResizeHandle
+                        columnId="demand"
+                        minWidth={120}
+                        tableId="inventory-table"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria("updated", selectedSort, selectedDir)}
+                      className="col-date"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/inventory"
+                        label="Updated"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          stock: selectedStock,
+                        }}
+                        sortKey="updated"
+                      />
+                      <ColumnResizeHandle
+                        columnId="updated"
+                        minWidth={110}
+                        tableId="inventory-table"
+                      />
+                    </th>
+                    <th className="col-action">
+                      <span className="sr-only">Open details</span>
                     </th>
                   </tr>
                 </thead>
@@ -339,16 +368,30 @@ export async function InventoryWorkspace({
                         <td className="inventory-quantity-cell">
                           <strong>{item.available}</strong>
                           <span className="cell-subtext">
-                            {item.unit} · min {item.reorderPoint}
+                            {item.unit} · {item.quantityReserved} reserved
                           </span>
                         </td>
-                        {isAdmin ? (
-                          <td className="numeric-cell hide-md">
-                            {item.reorderPoint}
-                          </td>
-                        ) : null}
                         <td>
-                          <StockBadge status={status} />
+                          <StockHealthCell
+                            percent={item.stockHealthPercent}
+                            status={status}
+                          />
+                        </td>
+                        <td className="demand-cell">
+                          {item.activeDemand > 0 ? (
+                            <>
+                              <strong>{item.activeDemand}</strong>
+                              <span className="cell-subtext">active demand</span>
+                            </>
+                          ) : (
+                            <span className="muted">No active demand</span>
+                          )}
+                        </td>
+                        <td className="date-cell">
+                          {formatDate(item.updatedAt)}
+                        </td>
+                        <td className="row-chevron-cell">
+                          <ChevronRight aria-hidden="true" />
                         </td>
                       </ClickableRow>
                     );
@@ -378,58 +421,43 @@ export async function InventoryWorkspace({
   );
 }
 
+function StockHealthCell({
+  percent,
+  status,
+}: {
+  percent: number;
+  status: ReturnType<typeof stockStatusFromQuantities>;
+}) {
+  return (
+    <div className="stock-health-cell">
+      <div className="stock-health-topline">
+        <strong>{percent}% healthy</strong>
+        <StockBadge status={status} />
+      </div>
+      <span
+        aria-label={`Stock health ${percent} percent`}
+        className="stock-health-meter"
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <span style={{ width: `${percent}%` }} />
+      </span>
+    </div>
+  );
+}
+
+function formatDate(value: Date | string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function formatFilterSummary(filters: Record<string, string>) {
   const active = Object.entries(filters)
     .filter(([, value]) => value)
     .map(([key, value]) => `${key}=${value}`);
   return active.length > 0 ? active.join(", ") : "none";
-}
-
-function Pagination({
-  basePath,
-  page,
-  pageCount,
-  searchParams,
-}: {
-  basePath: string;
-  page: number;
-  pageCount: number;
-  searchParams: Record<string, string>;
-}) {
-  return (
-    <div className="pagination-row">
-      <span>
-        Page {page} of {pageCount}
-      </span>
-      <div>
-        <Link
-          aria-disabled={page <= 1}
-          className="button button-secondary button-compact"
-          href={pageHref(basePath, searchParams, page - 1)}
-        >
-          Previous
-        </Link>
-        <Link
-          aria-disabled={page >= pageCount}
-          className="button button-secondary button-compact"
-          href={pageHref(basePath, searchParams, page + 1)}
-        >
-          Next
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function pageHref(
-  basePath: string,
-  searchParams: Record<string, string>,
-  page: number,
-) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (value) params.set(key, value);
-  }
-  params.set("page", String(Math.max(1, page)));
-  return `${basePath}?${params.toString()}`;
 }

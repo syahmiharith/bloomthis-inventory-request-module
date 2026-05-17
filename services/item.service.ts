@@ -34,8 +34,9 @@ type ItemSortKey =
   | "sku"
   | "category"
   | "available"
-  | "threshold"
-  | "status";
+  | "stockHealth"
+  | "status"
+  | "updated";
 type SortDirection = "asc" | "desc";
 
 export type ListItemsResult = Awaited<ReturnType<typeof listItemsCached>>;
@@ -110,6 +111,8 @@ async function listItemsRaw(
   dir: SortDirection,
 ) {
   const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
+  const activeDemand = activeDemandExpression();
+  const stockHealthPercent = stockHealthExpression(available, activeDemand);
   const stockRank = sql<number>`case
     when ${available} <= 0 then 0
     when ${available} <= ${inventoryItems.reorderPoint} then 1
@@ -164,10 +167,29 @@ async function listItemsRaw(
         createdAt: inventoryItems.createdAt,
         updatedAt: inventoryItems.updatedAt,
         available,
+        activeDemand,
+        stockHealthPercent,
       })
       .from(inventoryItems)
+      .leftJoin(
+        inventoryRequestItems,
+        eq(inventoryRequestItems.itemId, inventoryItems.id),
+      )
+      .leftJoin(
+        inventoryRequests,
+        eq(inventoryRequestItems.requestId, inventoryRequests.id),
+      )
       .where(whereClause)
-      .orderBy(...getItemOrderBy(sort, dir, available, stockRank))
+      .groupBy(inventoryItems.id)
+      .orderBy(
+        ...getItemOrderBy(
+          sort,
+          dir,
+          available,
+          stockHealthPercent,
+          stockRank,
+        ),
+      )
       .limit(pageSize)
       .offset((safePage - 1) * pageSize),
     listItemCategories(),
@@ -195,6 +217,7 @@ function getItemOrderBy(
   sort: ItemSortKey,
   dir: SortDirection,
   available: SQLWrapper,
+  stockHealthPercent: SQLWrapper,
   stockRank: SQLWrapper,
 ) {
   const byDirection = (expression: SQLWrapper) =>
@@ -207,17 +230,36 @@ function getItemOrderBy(
         ? inventoryItems.category
         : sort === "available"
           ? available
-          : sort === "threshold"
-            ? inventoryItems.reorderPoint
+          : sort === "stockHealth"
+            ? stockHealthPercent
             : sort === "status"
               ? stockRank
-              : inventoryItems.name;
+              : sort === "updated"
+                ? inventoryItems.updatedAt
+                : inventoryItems.name;
 
   return [
     byDirection(primary),
     asc(inventoryItems.name),
     asc(inventoryItems.id),
   ];
+}
+
+function activeDemandExpression() {
+  return sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+    where ${inventoryRequests.status} in ('pending', 'approved')
+  ), 0)::int`;
+}
+
+function stockHealthExpression(
+  available: SQLWrapper,
+  activeDemand: SQLWrapper,
+) {
+  const internalTarget = sql<number>`greatest(${inventoryItems.reorderPoint} * 2, ${inventoryItems.reorderPoint} + ${activeDemand})`;
+  return sql<number>`case
+    when ${internalTarget} <= 0 then 100
+    else least(100, greatest(0, round((${available})::numeric / nullif(${internalTarget}, 0) * 100)))::int
+  end`;
 }
 
 export async function listItemCategories() {
@@ -347,6 +389,7 @@ export async function getItemById(id: string) {
 }
 
 async function getItemByIdRaw(id: string) {
+  const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
   const [item] = await db
     .select({
       id: inventoryItems.id,
@@ -360,23 +403,125 @@ async function getItemByIdRaw(id: string) {
       reorderPoint: inventoryItems.reorderPoint,
       createdAt: inventoryItems.createdAt,
       updatedAt: inventoryItems.updatedAt,
-      available: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+      available,
     })
     .from(inventoryItems)
     .where(eq(inventoryItems.id, id))
     .limit(1);
 
-  return item
-    ? {
-        ...item,
-        isLowStock:
-          stockStatusFromQuantities(
-            item.quantityOnHand,
-            item.quantityReserved,
-            item.reorderPoint,
-          ) !== "In Stock",
-      }
-    : null;
+  if (!item) {
+    return null;
+  }
+
+  const [analytics, recentRequests, recentFulfillments] = await Promise.all([
+    getItemAnalytics(id),
+    getItemRecentRequests(id),
+    getItemRecentFulfillments(id),
+  ]);
+
+  return {
+    ...item,
+    ...analytics,
+    recentFulfillments,
+    recentRequests,
+    isLowStock:
+      stockStatusFromQuantities(
+        item.quantityOnHand,
+        item.quantityReserved,
+        item.reorderPoint,
+      ) !== "In Stock",
+  };
+}
+
+async function getItemAnalytics(itemId: string) {
+  const activeDemand = activeDemandExpression();
+  const available = sql<number>`max(${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved})`;
+  const stockHealthPercent = stockHealthExpression(available, activeDemand);
+  const [row] = await db
+    .select({
+      activeDemand,
+      approvedRequestCount: sql<number>`count(distinct ${inventoryRequests.id}) filter (
+        where ${inventoryRequests.status} = 'approved'
+      )::int`,
+      pendingRequestCount: sql<number>`count(distinct ${inventoryRequests.id}) filter (
+        where ${inventoryRequests.status} = 'pending'
+      )::int`,
+      stockHealthPercent,
+    })
+    .from(inventoryItems)
+    .leftJoin(
+      inventoryRequestItems,
+      eq(inventoryRequestItems.itemId, inventoryItems.id),
+    )
+    .leftJoin(
+      inventoryRequests,
+      eq(inventoryRequestItems.requestId, inventoryRequests.id),
+    )
+    .where(eq(inventoryItems.id, itemId))
+    .groupBy(inventoryItems.id);
+
+  return {
+    activeDemand: row?.activeDemand ?? 0,
+    approvedRequestCount: row?.approvedRequestCount ?? 0,
+    pendingRequestCount: row?.pendingRequestCount ?? 0,
+    stockHealthPercent: row?.stockHealthPercent ?? 100,
+  };
+}
+
+async function getItemRecentRequests(itemId: string) {
+  const rows = await db
+    .select({
+      id: inventoryRequests.id,
+      requestCode: inventoryRequests.requestCode,
+      requesterName: users.name,
+      status: inventoryRequests.status,
+      quantityRequested: inventoryRequestItems.quantityRequested,
+      unit: inventoryRequestItems.unit,
+      createdAt: inventoryRequests.createdAt,
+    })
+    .from(inventoryRequestItems)
+    .innerJoin(
+      inventoryRequests,
+      eq(inventoryRequestItems.requestId, inventoryRequests.id),
+    )
+    .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+    .where(eq(inventoryRequestItems.itemId, itemId))
+    .orderBy(desc(inventoryRequests.createdAt))
+    .limit(5);
+
+  return rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+async function getItemRecentFulfillments(itemId: string) {
+  const rows = await db
+    .select({
+      id: auditLogs.id,
+      actorName: auditLogs.actorName,
+      requestCode: inventoryRequests.requestCode,
+      createdAt: auditLogs.createdAt,
+    })
+    .from(inventoryRequestItems)
+    .innerJoin(
+      inventoryRequests,
+      eq(inventoryRequestItems.requestId, inventoryRequests.id),
+    )
+    .innerJoin(auditLogs, eq(auditLogs.requestId, inventoryRequests.id))
+    .where(
+      and(
+        eq(inventoryRequestItems.itemId, itemId),
+        eq(auditLogs.action, "request_fulfilled"),
+      ),
+    )
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(5);
+
+  return rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+  }));
 }
 
 export async function getStockOverviewData() {

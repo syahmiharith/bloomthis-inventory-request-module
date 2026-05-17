@@ -116,10 +116,10 @@ export function AppSidebar({ currentUser }: { currentUser: User }) {
       style={style}
     >
       <div className="sidebar-inner" data-testid="sidebar">
-        <div className="sidebar-brand">
-          <span className="brand-mark">I</span>
-          {!collapsed ? <strong>Inventory</strong> : null}
-        </div>
+        <Link className="sidebar-brand" href="/" title="BloomThis Internal Tool">
+          <span className="brand-mark">B</span>
+          {!collapsed ? <strong>BloomThis Internal Tool</strong> : null}
+        </Link>
 
         <div
           className="sidebar-scroll-region"
