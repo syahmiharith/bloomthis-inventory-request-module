@@ -8,12 +8,14 @@ import {
   inventoryRequests,
   users,
 } from "@/db/schema";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { DomainError } from "@/lib/errors";
 import {
   calculateStockKpis,
   stockRiskRank,
   stockStatusFromQuantities,
 } from "@/lib/inventory";
+import { cachedRead } from "@/lib/server-cache";
 import { createItemSchema } from "@/lib/validations";
 import { createAuditLog } from "./audit.service";
 
@@ -48,7 +50,30 @@ export async function listItems(filters: {
   );
 }
 
-const listItemsCached = cache(async function listItemsCached(
+async function listItemsCached(
+  category: string,
+  lowStock: boolean,
+  page: number,
+  pageSize: number,
+  query: string,
+  stock: ItemStockFilter | "",
+) {
+  return cachedRead(
+    () => listItemsRaw(category, lowStock, page, pageSize, query, stock),
+    [
+      "inventory-list",
+      category,
+      String(lowStock),
+      String(page),
+      String(pageSize),
+      query,
+      stock,
+    ],
+    { tags: [CACHE_TAGS.inventoryList] },
+  )();
+}
+
+async function listItemsRaw(
   category: string,
   lowStock: boolean,
   page: number,
@@ -131,22 +156,25 @@ const listItemsCached = cache(async function listItemsCached(
     })),
     totalCount,
   };
-});
+}
 
 export async function listItemCategories() {
   return listItemCategoriesCached();
 }
 
-const listItemCategoriesCached = cache(
-  async function listItemCategoriesCached() {
-    const rows = await db
-      .selectDistinct({ category: inventoryItems.category })
-      .from(inventoryItems)
-      .orderBy(asc(inventoryItems.category));
+const listItemCategoriesCached = () =>
+  cachedRead(
+    async function listItemCategoriesCached() {
+      const rows = await db
+        .selectDistinct({ category: inventoryItems.category })
+        .from(inventoryItems)
+        .orderBy(asc(inventoryItems.category));
 
-    return rows.map((row) => row.category);
-  },
-);
+      return rows.map((row) => row.category);
+    },
+    ["inventory-categories"],
+    { tags: [CACHE_TAGS.inventoryList] },
+  )();
 
 export async function listRequestableItems({
   page,
@@ -169,63 +197,74 @@ export async function listRequestableItems({
   );
 }
 
-const listRequestableItemsCached = cache(
-  async function listRequestableItemsCached(
-    page: number,
-    pageSize: number,
-    query: string,
-    selectedId: string,
-  ) {
-    const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
-    const conditions = [];
-    if (query) {
-      const search = `%${query}%`;
-      conditions.push(
-        sql`(
+async function listRequestableItemsCached(
+  page: number,
+  pageSize: number,
+  query: string,
+  selectedId: string,
+) {
+  return cachedRead(
+    () => listRequestableItemsRaw(page, pageSize, query, selectedId),
+    ["requestable-items", String(page), String(pageSize), query, selectedId],
+    { tags: [CACHE_TAGS.requestableItems, CACHE_TAGS.inventoryList] },
+  )();
+}
+
+async function listRequestableItemsRaw(
+  page: number,
+  pageSize: number,
+  query: string,
+  selectedId: string,
+) {
+  const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
+  const conditions = [];
+  if (query) {
+    const search = `%${query}%`;
+    conditions.push(
+      sql`(
         ${inventoryItems.name} ilike ${search}
         or ${inventoryItems.sku} ilike ${search}
         or ${inventoryItems.category} ilike ${search}
       )`,
-      );
-    }
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const [totalRow] = await db
-      .select({ totalCount: sql<number>`count(*)::int` })
-      .from(inventoryItems)
-      .where(whereClause);
-    const totalCount = totalRow?.totalCount ?? 0;
-    const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
-    const safePage = Math.min(page, pageCount);
+    );
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const [totalRow] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(inventoryItems)
+    .where(whereClause);
+  const totalCount = totalRow?.totalCount ?? 0;
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, pageCount);
 
-    const rows = await db
+  const rows = await db
+    .select(requestableItemSelection(available))
+    .from(inventoryItems)
+    .where(whereClause)
+    .orderBy(asc(inventoryItems.name))
+    .limit(pageSize)
+    .offset((safePage - 1) * pageSize);
+
+  if (selectedId && !rows.some((item) => item.id === selectedId)) {
+    const [selectedItem] = await db
       .select(requestableItemSelection(available))
       .from(inventoryItems)
-      .where(whereClause)
-      .orderBy(asc(inventoryItems.name))
-      .limit(pageSize)
-      .offset((safePage - 1) * pageSize);
+      .where(eq(inventoryItems.id, selectedId))
+      .limit(1);
 
-    if (selectedId && !rows.some((item) => item.id === selectedId)) {
-      const [selectedItem] = await db
-        .select(requestableItemSelection(available))
-        .from(inventoryItems)
-        .where(eq(inventoryItems.id, selectedId))
-        .limit(1);
-
-      if (selectedItem) {
-        rows.unshift(selectedItem);
-      }
+    if (selectedItem) {
+      rows.unshift(selectedItem);
     }
+  }
 
-    return {
-      page: safePage,
-      pageCount,
-      pageSize,
-      rows,
-      totalCount,
-    };
-  },
-);
+  return {
+    page: safePage,
+    pageCount,
+    pageSize,
+    rows,
+    totalCount,
+  };
+}
 
 function requestableItemSelection(available: ReturnType<typeof sql<number>>) {
   return {
@@ -238,10 +277,14 @@ function requestableItemSelection(available: ReturnType<typeof sql<number>>) {
 }
 
 export async function getItemById(id: string) {
-  return withDevTiming("getItemById", () => getItemByIdCached(id));
+  return withDevTiming("getItemById", () =>
+    cachedRead(() => getItemByIdRaw(id), [`inventory-detail:${id}`], {
+      tags: [CACHE_TAGS.inventoryDetail(id), CACHE_TAGS.inventoryList],
+    })(),
+  );
 }
 
-const getItemByIdCached = cache(async function getItemByIdCached(id: string) {
+async function getItemByIdRaw(id: string) {
   const [item] = await db
     .select({
       id: inventoryItems.id,
@@ -272,7 +315,7 @@ const getItemByIdCached = cache(async function getItemByIdCached(id: string) {
           ) !== "In Stock",
       }
     : null;
-});
+}
 
 export async function getStockOverviewData() {
   return getStockOverviewDataCached();

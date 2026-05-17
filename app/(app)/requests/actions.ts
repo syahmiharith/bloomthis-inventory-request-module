@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { revalidateRequestReads } from "@/lib/cache-tags";
 import type { RequestStatus } from "@/lib/constants";
 import { updateRequestStatus } from "@/services/request.service";
 
@@ -32,6 +33,7 @@ export async function updateRequestStatusAction(formData: FormData) {
   revalidatePath("/inventory");
   revalidatePath("/requests");
   revalidatePath(`/requests/${requestId}`);
+  revalidateRequestReads(requestId);
 
   if (errorMessage) {
     const params = new URLSearchParams({ error: errorMessage });

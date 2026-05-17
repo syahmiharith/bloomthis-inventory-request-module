@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { revalidateInventoryReads } from "@/lib/cache-tags";
 import { handleRouteError } from "@/lib/http";
 import { itemFilterSchema } from "@/lib/validations";
 import { createItem, listItems } from "@/services/item.service";
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/inventory");
+    revalidateInventoryReads(item.id);
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { revalidateRequestReads } from "@/lib/cache-tags";
 import { createRequest } from "@/services/request.service";
 
 export type CreateRequestState = {
@@ -26,7 +27,7 @@ export async function createInventoryRequestAction(
     const itemIds = formData.getAll("itemId");
     const quantities = formData.getAll("quantityRequested");
 
-    await createRequest(
+    const request = await createRequest(
       {
         department: actor.department,
         warehouse: "Main Warehouse",
@@ -40,6 +41,7 @@ export async function createInventoryRequestAction(
       },
       actor,
     );
+    revalidateRequestReads(request.id);
   } catch (error) {
     if (error instanceof ZodError) {
       return {

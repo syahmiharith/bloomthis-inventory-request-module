@@ -68,6 +68,12 @@ Seed demo data:
 npm run db:seed
 ```
 
+Verify database contents:
+
+```bash
+npm run db:verify
+```
+
 Run locally:
 
 ```bash
@@ -141,6 +147,16 @@ Seed demo users, inventory, and requests:
 ```bash
 npm run db:seed
 ```
+
+The seed script is manual only and is not run during Vercel builds. It creates a deterministic demo data set with 50+ inventory items, 30+ requests, multiple statuses, multi-item requests, low-stock items, and out-of-stock items.
+
+Verify the currently configured database:
+
+```bash
+npm run db:verify
+```
+
+This prints only aggregate counts for users, inventory items, requests, request item lines, request statuses, and inventory categories. It does not print connection strings or secrets.
 
 Drizzle uses `MIGRATE_DATABASE_URL` when present and otherwise falls back to `DATABASE_URL`, `POSTGRES_URL_NON_POOLING`, then `POSTGRES_URL`. Do not run destructive migrations automatically during a Vercel build. Run migrations manually against the target Supabase database before or during a controlled release step.
 

@@ -1374,6 +1374,12 @@ tbody tr.selected {
   margin: -8px 0 20px;
 }
 
+.list-count-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 10px 16px 0;
+}
+
 .dashboard-heading p,
 .stacked-panel-header p {
   margin: 4px 0 0;

@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { revalidateRequestReads } from "@/lib/cache-tags";
 import { handleRouteError } from "@/lib/http";
 import { requestFilterSchema } from "@/lib/validations";
 import { createRequest, listRequests } from "@/services/request.service";
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/requests");
+    revalidateRequestReads(created.id);
     return NextResponse.json({ request: created }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);

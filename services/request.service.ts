@@ -1,5 +1,4 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { cache } from "react";
 import { db } from "@/db";
 import {
   inventoryItems,
@@ -10,8 +9,10 @@ import {
   type InventoryRequest,
   type User,
 } from "@/db/schema";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { RequestStatus } from "@/lib/constants";
 import { DomainError, NotFoundError } from "@/lib/errors";
+import { cachedRead } from "@/lib/server-cache";
 import { assertValidRequestTransition } from "@/lib/utils";
 import {
   createRequestSchema,
@@ -42,7 +43,41 @@ export async function listRequests(
   );
 }
 
-const listRequestsCached = cache(async function listRequestsCached(
+async function listRequestsCached(
+  status: RequestStatus | "",
+  viewerId: string,
+  viewerRole: User["role"] | "",
+  category: string,
+  page: number,
+  pageSize: number,
+  query: string,
+) {
+  return cachedRead(
+    () =>
+      listRequestsRaw(
+        status,
+        viewerId,
+        viewerRole,
+        category,
+        page,
+        pageSize,
+        query,
+      ),
+    [
+      "request-list",
+      status,
+      viewerId,
+      viewerRole,
+      category,
+      String(page),
+      String(pageSize),
+      query,
+    ],
+    { tags: [CACHE_TAGS.requestList] },
+  )();
+}
+
+async function listRequestsRaw(
   status: RequestStatus | "",
   viewerId: string,
   viewerRole: User["role"] | "",
@@ -139,11 +174,21 @@ const listRequestsCached = cache(async function listRequestsCached(
     })),
     totalCount,
   };
-});
+}
 
 export async function getRequestById(id: string, viewer?: User) {
   const request = await withDevTiming("getRequestById", () =>
-    getRequestByIdCached(id, viewer?.id ?? "", viewer?.role ?? ""),
+    cachedRead(
+      () => getRequestByIdRaw(id, viewer?.id ?? "", viewer?.role ?? ""),
+      [`request-detail:${id}`, viewer?.id ?? "", viewer?.role ?? ""],
+      {
+        tags: [
+          CACHE_TAGS.requestDetail(id),
+          CACHE_TAGS.requestList,
+          CACHE_TAGS.inventoryList,
+        ],
+      },
+    )(),
   );
   if (!request) {
     throw new NotFoundError("Request not found.");
@@ -151,7 +196,7 @@ export async function getRequestById(id: string, viewer?: User) {
   return request;
 }
 
-const getRequestByIdCached = cache(async function getRequestByIdCached(
+async function getRequestByIdRaw(
   id: string,
   viewerId: string,
   viewerRole: User["role"] | "",
@@ -187,7 +232,7 @@ const getRequestByIdCached = cache(async function getRequestByIdCached(
   }
 
   return hydrateRequest(request);
-});
+}
 
 export async function createRequest(input: unknown, actor: User) {
   const parsed = createRequestSchema.parse(input);
@@ -491,19 +536,22 @@ function groupRequestItems(
   return result;
 }
 
-const listRequestCategoriesCached = cache(
-  async function listRequestCategoriesCached(
-    _viewerId: string,
-    _viewerRole: User["role"] | "",
-  ) {
-    const rows = await db
-      .selectDistinct({ category: inventoryItems.category })
-      .from(inventoryItems)
-      .orderBy(asc(inventoryItems.category));
+const listRequestCategoriesCached = (
+  viewerId: string,
+  viewerRole: User["role"] | "",
+) =>
+  cachedRead(
+    async function listRequestCategoriesCached() {
+      const rows = await db
+        .selectDistinct({ category: inventoryItems.category })
+        .from(inventoryItems)
+        .orderBy(asc(inventoryItems.category));
 
-    return rows.map((row) => row.category);
-  },
-);
+      return rows.map((row) => row.category);
+    },
+    ["request-categories", viewerId, viewerRole],
+    { tags: [CACHE_TAGS.inventoryList, CACHE_TAGS.requestList] },
+  )();
 
 async function safeListRequestCategories(
   viewerId: string,

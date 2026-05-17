@@ -13,10 +13,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { KpiCard, KpiGrid } from "@/components/ui/Kpi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
-  getDashboardInventoryKpis,
-  getDashboardRecentRequests,
-  getDashboardRequestKpis,
-  getUrgentDashboard,
+  getCachedDashboardKpis,
+  getCachedDashboardRecentRequests,
+  getCachedUrgentDashboard,
 } from "@/services/dashboard.service";
 
 export default async function HomePage() {
@@ -24,37 +23,36 @@ export default async function HomePage() {
   const [kpis, priority, recent] = await Promise.all([
     safeDashboardSection(
       "dashboard:kpis",
-      async () => {
-        const [inventory, requests] = await Promise.all([
-          getDashboardInventoryKpis(currentUser),
-          getDashboardRequestKpis(currentUser),
-        ]);
-        return { inventory, requests };
-      },
+      () => getCachedDashboardKpis(currentUser),
       {
-        inventory: emptyDashboardData.inventory,
-        requests: emptyDashboardData.requests,
+        data: {
+          inventory: emptyDashboardData.inventory,
+          requests: emptyDashboardData.requests,
+        },
+        stale: false,
       },
     ),
     safeDashboardSection(
       "dashboard:priority",
-      () => getUrgentDashboard(currentUser),
-      emptyUrgentData,
+      () => getCachedUrgentDashboard(currentUser),
+      { data: emptyUrgentData, stale: false },
     ),
     safeDashboardSection(
       "dashboard:recent",
-      () => getDashboardRecentRequests(currentUser),
-      emptyDashboardData.recentRequests,
+      () => getCachedDashboardRecentRequests(currentUser),
+      { data: emptyDashboardData.recentRequests, stale: false },
     ),
   ]);
   const dashboard = {
-    inventory: kpis.data.inventory,
-    recentRequests: recent.data,
-    requests: kpis.data.requests,
+    inventory: kpis.data.data.inventory,
+    recentRequests: recent.data.data,
+    requests: kpis.data.data.requests,
   };
-  const urgent = priority.data;
+  const urgent = priority.data.data;
   const hasDashboardDataIssue =
     !kpis.available || !priority.available || !recent.available;
+  const hasStaleDashboardData =
+    kpis.data.stale || priority.data.stale || recent.data.stale;
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -74,6 +72,10 @@ export default async function HomePage() {
         {hasDashboardDataIssue ? (
           <p className="alert alert-info dashboard-data-alert" role="status">
             Dashboard data temporarily unavailable.
+          </p>
+        ) : hasStaleDashboardData ? (
+          <p className="alert alert-info dashboard-data-alert" role="status">
+            Dashboard data may be slightly stale.
           </p>
         ) : null}
 

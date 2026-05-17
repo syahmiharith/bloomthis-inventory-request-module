@@ -165,6 +165,17 @@ export async function RequestsWorkspace({
                 ) : null}
               </DataToolbar>
             </form>
+            {isAdmin || process.env.NODE_ENV === "development" ? (
+              <p className="list-count-meta">
+                Showing {pagedRequests.length} of {requestResult.totalCount}{" "}
+                request rows · role {currentUser.role} · filters{" "}
+                {formatFilterSummary({
+                  category: selectedCategory,
+                  q: query,
+                  status: selectedStatus ?? "",
+                })}
+              </p>
+            ) : null}
 
             {requestResult.totalCount === 0 ? (
               <EmptyState
@@ -354,4 +365,11 @@ function formatDate(value: string) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatFilterSummary(filters: Record<string, string>) {
+  const active = Object.entries(filters)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}=${value}`);
+  return active.length > 0 ? active.join(", ") : "none";
 }

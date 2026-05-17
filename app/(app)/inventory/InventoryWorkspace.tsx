@@ -139,6 +139,17 @@ export async function InventoryWorkspace({
                 ) : null}
               </DataToolbar>
             </form>
+            {isAdmin || process.env.NODE_ENV === "development" ? (
+              <p className="list-count-meta">
+                Showing {pagedItems.length} of {itemResult.totalCount} inventory
+                rows · role {currentUser.role} · filters{" "}
+                {formatFilterSummary({
+                  category: selectedCategory,
+                  q: query,
+                  stock: selectedStock,
+                })}
+              </p>
+            ) : null}
 
             {itemResult.totalCount === 0 ? (
               <EmptyState
@@ -232,6 +243,13 @@ export async function InventoryWorkspace({
       </main>
     </WorkspaceLayout>
   );
+}
+
+function formatFilterSummary(filters: Record<string, string>) {
+  const active = Object.entries(filters)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}=${value}`);
+  return active.length > 0 ? active.join(", ") : "none";
 }
 
 function Pagination({

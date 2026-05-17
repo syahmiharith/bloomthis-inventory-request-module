@@ -9,7 +9,9 @@ import {
   users,
   type User,
 } from "@/db/schema";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { RequestStatus } from "@/lib/constants";
+import { cachedRead } from "@/lib/server-cache";
 
 type SummaryKey = RequestStatus | "all";
 
@@ -30,6 +32,31 @@ export type DashboardSummary = Record<
     trendPercent: number;
   }
 >;
+
+export type DashboardPageData = {
+  inventory: Awaited<ReturnType<typeof getDashboardInventoryKpis>>;
+  recentRequests: DashboardRequestSummary[];
+  requests: Awaited<ReturnType<typeof getDashboardRequestKpis>>;
+};
+
+export type CachedDashboardResult<T> = {
+  data: T;
+  stale: boolean;
+};
+
+const lastGoodDashboardData = new Map<string, DashboardPageData>();
+const lastGoodDashboardKpis = new Map<
+  string,
+  Pick<DashboardPageData, "inventory" | "requests">
+>();
+const lastGoodDashboardRecent = new Map<
+  string,
+  DashboardPageData["recentRequests"]
+>();
+const lastGoodUrgentDashboard = new Map<
+  string,
+  Awaited<ReturnType<typeof getUrgentDashboardRaw>>
+>();
 
 export async function getDashboardSummary(
   viewer: User,
@@ -106,13 +133,79 @@ const getDashboardSummaryCached = cache(
 );
 
 export async function getDashboardPageData(viewer: User) {
-  const [inventory, requests, recentRequests] = await Promise.all([
-    getDashboardInventoryKpis(viewer),
-    getDashboardRequestKpis(viewer),
-    getDashboardRecentRequests(viewer),
-  ]);
+  const result = await getCachedDashboardPageData(viewer);
+  return result.data;
+}
 
-  return { inventory, requests, recentRequests };
+export async function getCachedDashboardPageData(
+  viewer: User,
+): Promise<CachedDashboardResult<DashboardPageData>> {
+  const scope = dashboardScope(viewer);
+  try {
+    const data = await cachedRead(
+      async () => getDashboardPageDataRaw(viewer.id, viewer.role),
+      [`dashboard:${scope}:page`],
+      { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
+    )();
+    lastGoodDashboardData.set(scope, data);
+    return { data, stale: false };
+  } catch (error) {
+    const cached = lastGoodDashboardData.get(scope);
+    if (cached) {
+      return { data: cached, stale: true };
+    }
+    throw error;
+  }
+}
+
+export async function getCachedDashboardKpis(
+  viewer: User,
+): Promise<
+  CachedDashboardResult<Pick<DashboardPageData, "inventory" | "requests">>
+> {
+  const scope = dashboardScope(viewer);
+  try {
+    const data = await cachedRead(
+      async () => {
+        const [inventory, requests] = await Promise.all([
+          getDashboardInventoryKpisCached(viewer.id, viewer.role),
+          getDashboardRequestKpisCached(viewer.id, viewer.role),
+        ]);
+        return { inventory, requests };
+      },
+      [`dashboard:${scope}:kpis`],
+      { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
+    )();
+    lastGoodDashboardKpis.set(scope, data);
+    return { data, stale: false };
+  } catch (error) {
+    const cached = lastGoodDashboardKpis.get(scope);
+    if (cached) {
+      return { data: cached, stale: true };
+    }
+    throw error;
+  }
+}
+
+export async function getCachedDashboardRecentRequests(
+  viewer: User,
+): Promise<CachedDashboardResult<DashboardPageData["recentRequests"]>> {
+  const scope = dashboardScope(viewer);
+  try {
+    const data = await cachedRead(
+      async () => getDashboardRecentRequestsCached(viewer.id, viewer.role),
+      [`dashboard:${scope}:recent`],
+      { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
+    )();
+    lastGoodDashboardRecent.set(scope, data);
+    return { data, stale: false };
+  } catch (error) {
+    const cached = lastGoodDashboardRecent.get(scope);
+    if (cached) {
+      return { data: cached, stale: true };
+    }
+    throw error;
+  }
 }
 
 export async function getDashboardInventoryKpis(viewer: User) {
@@ -221,10 +314,47 @@ const getDashboardRecentRequestsCached = cache(
 );
 
 export async function getUrgentDashboard(viewer: User) {
-  return getUrgentDashboardCached(viewer.id, viewer.role);
+  const result = await getCachedUrgentDashboard(viewer);
+  return result.data;
 }
 
-const getUrgentDashboardCached = cache(async function getUrgentDashboardCached(
+export async function getCachedUrgentDashboard(
+  viewer: User,
+): Promise<
+  CachedDashboardResult<Awaited<ReturnType<typeof getUrgentDashboardRaw>>>
+> {
+  const scope = dashboardScope(viewer);
+  try {
+    const data = await cachedRead(
+      async () => getUrgentDashboardRaw(viewer.id, viewer.role),
+      [`dashboard:${scope}:urgent`],
+      { tags: [CACHE_TAGS.dashboard, `dashboard:${scope}`] },
+    )();
+    lastGoodUrgentDashboard.set(scope, data);
+    return { data, stale: false };
+  } catch (error) {
+    const cached = lastGoodUrgentDashboard.get(scope);
+    if (cached) {
+      return { data: cached, stale: true };
+    }
+    throw error;
+  }
+}
+
+async function getDashboardPageDataRaw(
+  viewerId: string,
+  viewerRole: User["role"],
+) {
+  const [inventory, requests, recentRequests] = await Promise.all([
+    getDashboardInventoryKpisCached(viewerId, viewerRole),
+    getDashboardRequestKpisCached(viewerId, viewerRole),
+    getDashboardRecentRequestsCached(viewerId, viewerRole),
+  ]);
+
+  return { inventory, requests, recentRequests };
+}
+
+async function getUrgentDashboardRaw(
   viewerId: string,
   viewerRole: User["role"],
 ) {
@@ -364,7 +494,11 @@ const getUrgentDashboardCached = cache(async function getUrgentDashboardCached(
     inventoryRisk,
     recentActivity,
   };
-});
+}
+
+function dashboardScope(viewer: Pick<User, "id" | "role">) {
+  return viewer.role === "admin" ? "admin" : `employee:${viewer.id}`;
+}
 
 function calculateTrend(current: number, previous: number) {
   if (previous === 0) {

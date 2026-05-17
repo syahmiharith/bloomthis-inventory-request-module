@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { revalidateInventoryReads } from "@/lib/cache-tags";
 import { createItem } from "@/services/item.service";
 
 export type CreateInventoryItemState = {
@@ -19,7 +20,7 @@ export async function createInventoryItemAction(
   const lowStockThreshold = formData.get("lowStockThreshold");
 
   try {
-    await createItem(
+    const item = await createItem(
       {
         name: formData.get("name"),
         sku: formData.get("sku"),
@@ -35,6 +36,7 @@ export async function createInventoryItemAction(
       },
       actor.name,
     );
+    revalidateInventoryReads(item.id);
   } catch (error) {
     if (error instanceof ZodError) {
       return {
