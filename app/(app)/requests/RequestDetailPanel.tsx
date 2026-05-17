@@ -134,18 +134,26 @@ export function RequestDetailPanel({
         {request.requestHistory.length === 0 ? (
           <p className="empty-state">No history yet.</p>
         ) : (
-          <div className="request-history-list">
-            {request.requestHistory.map((entry) => (
+          <div className="request-history-list" role="list">
+            {request.requestHistory.map((entry, index) => (
               <article
                 className={`request-history-card ${timelineTone(entry.action)}`}
                 key={entry.id}
+                role="listitem"
               >
-                <span className="timeline-dot" />
-                <div>
-                  <strong>{humanize(entry.action)}</strong>
+                <div className="timeline-marker" aria-hidden="true">
+                  <span className="timeline-dot" />
+                  {index < request.requestHistory.length - 1 ? (
+                    <span className="timeline-connector" />
+                  ) : null}
+                </div>
+                <div className="request-history-content">
+                  <div className="request-history-heading">
+                    <strong>{humanize(entry.action)}</strong>
+                    <time>{formatDateTime(entry.createdAt)}</time>
+                  </div>
                   <p>{formatHistoryMeta(entry)}</p>
-                  <time>{formatDateTime(entry.createdAt)}</time>
-                  {entry.note ? <span className="history-note">{entry.note}</span> : null}
+                  {entry.note ? <em className="history-note">{entry.note}</em> : null}
                 </div>
               </article>
             ))}
