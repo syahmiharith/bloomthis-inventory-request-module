@@ -161,7 +161,7 @@ async function createEmployeeRequest(
   });
   await page.getByLabel("Quantity").fill(String(quantity));
   await page.getByLabel("Reason").fill(reason);
-  await page.getByRole("button", { name: "Submit request" }).click();
+  await page.getByRole("button", { name: /Submit \d+ item request/ }).click();
   await expect(page.getByTestId("requests-page")).toBeVisible();
   await page.getByRole("row").filter({ hasText: /^REQ-/ }).first().click();
   await expect(page.getByTestId("request-detail-panel")).toBeVisible();
