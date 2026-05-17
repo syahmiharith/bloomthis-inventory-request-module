@@ -26,6 +26,30 @@ export async function createInventoryRequestAction(
   try {
     const itemIds = formData.getAll("itemId");
     const quantities = formData.getAll("quantityRequested");
+    const requestItems = itemIds
+      .map((itemId, index) => ({
+        itemId: String(itemId ?? "").trim(),
+        quantityRequested: numberFromForm(quantities[index] ?? null),
+      }))
+      .filter((item) => item.itemId.length > 0);
+
+    if (requestItems.length === 0) {
+      return { errors: { form: "Add at least one inventory item." } };
+    }
+
+    const duplicateItem = requestItems.find(
+      (item, index) =>
+        requestItems.findIndex((entry) => entry.itemId === item.itemId) !==
+        index,
+    );
+
+    if (duplicateItem) {
+      return {
+        errors: {
+          form: "Each item can only appear once. Combine duplicate quantities into one line.",
+        },
+      };
+    }
 
     const request = await createRequest(
       {
@@ -34,10 +58,7 @@ export async function createInventoryRequestAction(
         requiredBy: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         priority: "normal",
         reason: formData.get("reason"),
-        items: itemIds.map((itemId, index) => ({
-          itemId,
-          quantityRequested: numberFromForm(quantities[index] ?? null),
-        })),
+        items: requestItems,
       },
       actor,
     );

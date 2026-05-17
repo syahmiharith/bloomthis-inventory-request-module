@@ -1498,6 +1498,130 @@ tbody tr.selected {
   color: var(--muted);
 }
 
+.kpi-card {
+  display: flex;
+  min-height: 148px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+.kpi-card-body {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.kpi-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  margin: 14px -20px -20px;
+  padding: 12px 20px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dashboard-card {
+  display: flex;
+  min-height: 360px;
+  flex-direction: column;
+}
+
+.dashboard-card-body {
+  flex: 1 1 auto;
+}
+
+.kpi-card,
+.dashboard-risk-row,
+.quick-action-row,
+.panel-footer-link,
+.kpi-card-footer,
+.clickable-row {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.kpi-card:hover,
+.panel:hover {
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-risk-row:hover,
+.quick-action-row:hover,
+.kpi-card-footer:hover,
+.panel-footer-link:hover {
+  background: #f8fafc;
+}
+
+.dashboard-risk-row:hover svg,
+.quick-action-row:hover > svg,
+.panel-footer-link:hover svg {
+  transform: translateX(2px);
+}
+
+.panel-footer-link {
+  margin-top: auto;
+  font-weight: 700;
+}
+
+.timeline-item {
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.timeline-item:hover {
+  background: #f8fafc;
+}
+
+.requester-cell {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 10px;
+  vertical-align: middle;
+}
+
+.portrait-avatar {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 55%, #dcfce7 100%);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.5);
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.requester-meta {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.requester-meta strong,
+.requester-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requester-meta small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .timeline-dot {
   display: block;
   width: 10px;

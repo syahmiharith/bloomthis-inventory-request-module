@@ -139,17 +139,15 @@ export async function InventoryWorkspace({
                 ) : null}
               </DataToolbar>
             </form>
-            {isAdmin || process.env.NODE_ENV === "development" ? (
-              <p className="list-count-meta">
-                Showing {pagedItems.length} of {itemResult.totalCount} inventory
-                rows · role {currentUser.role} · filters{" "}
-                {formatFilterSummary({
-                  category: selectedCategory,
-                  q: query,
-                  stock: selectedStock,
-                })}
-              </p>
-            ) : null}
+            <p className="list-count-meta">
+              Showing {pagedItems.length} of {itemResult.totalCount} inventory
+              rows · filters{" "}
+              {formatFilterSummary({
+                category: selectedCategory,
+                q: query,
+                stock: selectedStock,
+              })}
+            </p>
 
             {itemResult.totalCount === 0 ? (
               <EmptyState

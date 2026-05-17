@@ -28,6 +28,8 @@ const requestStatuses: RequestStatus[] = [
   "fulfilled",
 ];
 const pageSize = 25;
+type RequestRow = Awaited<ReturnType<typeof listRequests>>["rows"][number];
+type RequestItemRow = RequestRow["items"][number];
 
 export async function RequestsWorkspace({
   currentUser,
@@ -165,17 +167,15 @@ export async function RequestsWorkspace({
                 ) : null}
               </DataToolbar>
             </form>
-            {isAdmin || process.env.NODE_ENV === "development" ? (
-              <p className="list-count-meta">
-                Showing {pagedRequests.length} of {requestResult.totalCount}{" "}
-                request rows · role {currentUser.role} · filters{" "}
-                {formatFilterSummary({
-                  category: selectedCategory,
-                  q: query,
-                  status: selectedStatus ?? "",
-                })}
-              </p>
-            ) : null}
+            <p className="list-count-meta">
+              Showing {pagedRequests.length} of {requestResult.totalCount}{" "}
+              request rows · filters{" "}
+              {formatFilterSummary({
+                category: selectedCategory,
+                q: query,
+                status: selectedStatus ?? "",
+              })}
+            </p>
 
             {requestResult.totalCount === 0 ? (
               <EmptyState
@@ -212,12 +212,6 @@ export async function RequestsWorkspace({
                       (sum, item) => sum + item.requestedQuantity,
                       0,
                     );
-                    const canFulfill =
-                      request.status === "approved" &&
-                      request.items.every(
-                        (item) =>
-                          item.availableQuantity >= item.requestedQuantity,
-                      );
                     return (
                       <ClickableRow
                         href={`/requests/${request.id}`}
@@ -235,7 +229,10 @@ export async function RequestsWorkspace({
                             className="truncate-cell"
                             title={request.requesterName}
                           >
-                            {request.requesterName}
+                            <RequesterCell
+                              department={request.department}
+                              name={request.requesterName}
+                            />
                           </td>
                         ) : null}
                         <td
@@ -255,7 +252,7 @@ export async function RequestsWorkspace({
                         {isAdmin ? (
                           <td className="hide-md">
                             <StockSummary
-                              canFulfill={canFulfill}
+                              items={request.items}
                               status={request.status}
                             />
                           </td>
@@ -339,20 +336,71 @@ function pageHref(
 }
 
 function StockSummary({
-  canFulfill,
+  items,
   status,
 }: {
-  canFulfill: boolean;
+  items: RequestItemRow[];
   status: RequestStatus;
 }) {
-  if (status !== "approved") {
-    return <span className="muted">Not applicable</span>;
+  if (status === "fulfilled") {
+    return <span className="badge badge-green">Issued</span>;
   }
 
-  return canFulfill ? (
-    <span className="badge badge-green">Enough stock</span>
-  ) : (
-    <span className="badge badge-red">Insufficient stock</span>
+  if (status === "rejected") {
+    return <span className="badge badge-neutral">Closed</span>;
+  }
+
+  if (items.length === 0) {
+    return <span className="badge badge-neutral">No items</span>;
+  }
+
+  const shortItems = items.filter(
+    (item) => item.availableQuantity < item.requestedQuantity,
+  );
+
+  if (shortItems.length === 0) {
+    return <span className="badge badge-green">Enough stock</span>;
+  }
+
+  if (shortItems.length === items.length) {
+    return <span className="badge badge-red">Insufficient stock</span>;
+  }
+
+  return (
+    <span className="badge badge-amber">
+      {shortItems.length} item{shortItems.length === 1 ? "" : "s"} short
+    </span>
+  );
+}
+
+function RequesterCell({
+  department,
+  name,
+}: {
+  department: string;
+  name: string;
+}) {
+  return (
+    <span className="requester-cell">
+      <span aria-hidden="true" className="portrait-avatar">
+        {initials(name)}
+      </span>
+      <span className="requester-meta">
+        <strong>{name}</strong>
+        <small>{department}</small>
+      </span>
+    </span>
+  );
+}
+
+function initials(name: string) {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "U"
   );
 }
 

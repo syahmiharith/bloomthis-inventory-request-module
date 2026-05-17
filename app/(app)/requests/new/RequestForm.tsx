@@ -54,6 +54,9 @@ export function RequestForm({
     initialState,
   );
   const selectedIds = lines.map((line) => line.itemId).filter(Boolean);
+  const hasDuplicateLines = selectedIds.some(
+    (id, index) => selectedIds.indexOf(id) !== index,
+  );
   const itemById = useMemo(() => {
     const entries = [...Object.values(selectedItems), ...items].map(
       (item) => [item.id, item] as const,
@@ -225,6 +228,11 @@ export function RequestForm({
         {state.message ? (
           <p aria-live="polite" className="form-message error">
             {state.message}
+          </p>
+        ) : null}
+        {state.errors?.form ? (
+          <p aria-live="polite" className="form-message error">
+            {state.errors.form}
           </p>
         ) : null}
 
@@ -445,11 +453,12 @@ export function RequestForm({
             disabled={
               pending ||
               itemLookup.loading ||
+              hasDuplicateLines ||
               lines.some((line) => line.itemId.length === 0)
             }
             type="submit"
           >
-            {pending ? "Submitting..." : "Submit request"}
+            {pending ? "Submitting..." : `Submit ${lines.length} item request`}
           </button>
         </div>
       </form>
