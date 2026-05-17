@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { User } from "@/db/schema";
 import type { RequestStatus } from "@/lib/constants";
-import { listItems } from "@/services/item.service";
+import { listRequestableItems } from "@/services/item.service";
 import { listRequests } from "@/services/request.service";
 import { RequestCreateModalButton } from "./RequestCreateModalButton";
 
@@ -53,39 +53,25 @@ export async function RequestsWorkspace({
   const query = searchParams.q?.trim().toLowerCase() ?? "";
   const selectedCategory = searchParams.category?.trim() ?? "";
   const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
-  const [requests, allAccessibleRequests, inventoryItems] = await Promise.all([
-    listRequests(selectedStatus ? { status: selectedStatus } : {}, currentUser),
-    listRequests({}, currentUser),
-    listItems({}),
+  const [requestResult, inventoryItems] = await Promise.all([
+    listRequests(
+      {
+        category: selectedCategory,
+        page: currentPage,
+        pageSize,
+        q: query,
+        status: selectedStatus,
+      },
+      currentUser,
+    ),
+    listRequestableItems(),
   ]);
   const isAdmin = currentUser.role === "admin";
-  const categories = Array.from(
-    new Set(
-      allAccessibleRequests.flatMap((request) =>
-        request.items.map((item) => item.itemCategory),
-      ),
-    ),
-  ).sort((left, right) => left.localeCompare(right));
-  const filteredRequests = requests.filter((request) => {
-    const matchesQuery =
-      query.length === 0 ||
-      request.requestCode.toLowerCase().includes(query) ||
-      request.requesterName.toLowerCase().includes(query) ||
-      request.items.some((item) => item.itemName.toLowerCase().includes(query));
-    const matchesCategory =
-      selectedCategory.length === 0 ||
-      request.items.some((item) => item.itemCategory === selectedCategory);
-    return matchesQuery && matchesCategory;
-  });
-  const pageCount = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
-  const safePage = Math.min(currentPage, pageCount);
-  const pagedRequests = filteredRequests.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
+  const categories = requestResult.categories;
+  const pagedRequests = requestResult.rows;
   const selectedOutsideFilters =
     selectedRequestId !== undefined &&
-    !filteredRequests.some((request) => request.id === selectedRequestId);
+    !pagedRequests.some((request) => request.id === selectedRequestId);
 
   return (
     <WorkspaceLayout
@@ -141,8 +127,8 @@ export async function RequestsWorkspace({
           ) : null}
           {selectedOutsideFilters ? (
             <p aria-live="polite" className="alert alert-info">
-              The selected request is outside the current filters. Clear filters
-              to show it in the table.
+              The selected request is outside the current page or filters. Clear
+              filters or change pages to show it in the table.
             </p>
           ) : null}
 
@@ -193,7 +179,7 @@ export async function RequestsWorkspace({
               </DataToolbar>
             </form>
 
-            {filteredRequests.length === 0 ? (
+            {requestResult.totalCount === 0 ? (
               <EmptyState
                 action={
                   !isAdmin ? (
@@ -280,11 +266,11 @@ export async function RequestsWorkspace({
                   </tbody>
               </DataTable>
             )}
-            {filteredRequests.length > pageSize ? (
+            {requestResult.totalCount > pageSize ? (
               <Pagination
                 basePath="/requests"
-                page={safePage}
-                pageCount={pageCount}
+                page={requestResult.page}
+                pageCount={requestResult.pageCount}
                 searchParams={{
                   category: selectedCategory,
                   q: query,

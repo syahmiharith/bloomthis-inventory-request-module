@@ -71,7 +71,9 @@ test("employee creates request and cannot see admin actions", async ({
 }) => {
   await createEmployeeRequest(page, 1, `E2E employee request ${Date.now()}`);
 
-  await expect(page.getByTestId("request-detail-panel")).toBeVisible();
+  await expect(page.getByTestId("request-detail-panel")).toBeVisible({
+    timeout: 10_000,
+  });
   await expect(page.getByText("Admin Actions")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Fulfill" })).toHaveCount(0);

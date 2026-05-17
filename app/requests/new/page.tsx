@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { listItems } from "@/services/item.service";
+import { listRequestableItems } from "@/services/item.service";
 import { RequestsWorkspace } from "../RequestsWorkspace";
 import { EmptyRequestModal } from "./EmptyRequestModal";
 import { RequestForm } from "./RequestForm";
@@ -18,28 +18,21 @@ export default async function NewRequestPage({
 }: NewRequestPageProps) {
   const [currentUser, items, params] = await Promise.all([
     getCurrentUser(),
-    listItems({}),
+    listRequestableItems(),
     searchParams,
   ]);
-  const requestableItems = items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    sku: item.sku,
-    category: item.category,
-    available: item.available,
-  }));
 
   return (
     <RequestsWorkspace
       currentUser={currentUser}
       searchParams={params ?? {}}
       overlay={
-        requestableItems.length === 0 ? (
+        items.length === 0 ? (
           <EmptyRequestModal />
         ) : (
           <RequestForm
             initialItemId={params?.itemId}
-            items={requestableItems}
+            items={items}
             requesterName={currentUser.name}
           />
         )

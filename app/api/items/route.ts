@@ -12,9 +12,18 @@ export async function GET(request: Request) {
       category: url.searchParams.get("category") ?? undefined,
       lowStock: url.searchParams.get("lowStock") ?? undefined,
     });
-    const items = await listItems(filters);
+    const result = await listItems({
+      ...filters,
+      page: Number(url.searchParams.get("page") ?? "1"),
+      q: url.searchParams.get("q") ?? undefined,
+      stock: (url.searchParams.get("stock") ?? "") as
+        | "in"
+        | "low"
+        | "out"
+        | "",
+    });
     return NextResponse.json({
-      items: items.map((item) => ({
+      items: result.rows.map((item) => ({
         id: item.id,
         name: item.name,
         sku: item.sku,
@@ -27,6 +36,7 @@ export async function GET(request: Request) {
         reorderPoint: item.reorderPoint,
         isLowStock: item.isLowStock,
       })),
+      ...result,
     });
   } catch (error) {
     return handleRouteError(error);

@@ -46,38 +46,18 @@ export async function InventoryWorkspace({
     ? (searchParams.stock as (typeof stockFilters)[number])
     : "";
   const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
-  const allItems = await listItems({});
-  const categories = Array.from(
-    new Set(allItems.map((item) => item.category)),
-  ).sort((left, right) => left.localeCompare(right));
-  const filteredItems = allItems.filter((item) => {
-    const status = stockStatusFromQuantities(
-      item.quantityOnHand,
-      item.quantityReserved,
-      item.reorderPoint,
-    );
-    const matchesQuery =
-      query.length === 0 ||
-      item.name.toLowerCase().includes(query.toLowerCase()) ||
-      item.sku.toLowerCase().includes(query.toLowerCase());
-    const matchesCategory =
-      selectedCategory.length === 0 || item.category === selectedCategory;
-    const matchesStock =
-      selectedStock === "" ||
-      (selectedStock === "in" && status === "In Stock") ||
-      (selectedStock === "low" && status === "Low Stock") ||
-      (selectedStock === "out" && status === "Out of Stock");
-    return matchesQuery && matchesCategory && matchesStock;
+  const itemResult = await listItems({
+    category: selectedCategory,
+    page: currentPage,
+    pageSize,
+    q: query,
+    stock: selectedStock,
   });
-  const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
-  const safePage = Math.min(currentPage, pageCount);
-  const pagedItems = filteredItems.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
+  const categories = itemResult.categories;
+  const pagedItems = itemResult.rows;
   const selectedOutsideFilters =
     selectedItemId !== undefined &&
-    !filteredItems.some((item) => item.id === selectedItemId);
+    !pagedItems.some((item) => item.id === selectedItemId);
   const isAdmin = currentUser.role === "admin";
 
   return (
@@ -111,8 +91,8 @@ export async function InventoryWorkspace({
           ) : null}
           {selectedOutsideFilters ? (
             <p aria-live="polite" className="alert alert-info">
-              The selected item is outside the current filters. Clear filters to
-              show it in the table.
+              The selected item is outside the current page or filters. Clear
+              filters or change pages to show it in the table.
             </p>
           ) : null}
 
@@ -161,7 +141,7 @@ export async function InventoryWorkspace({
               </DataToolbar>
             </form>
 
-            {filteredItems.length === 0 ? (
+            {itemResult.totalCount === 0 ? (
               <EmptyState
                 action={
                   isAdmin ? (
@@ -232,11 +212,11 @@ export async function InventoryWorkspace({
                   </tbody>
               </DataTable>
             )}
-            {filteredItems.length > pageSize ? (
+            {itemResult.totalCount > pageSize ? (
               <Pagination
                 basePath="/inventory"
-                page={safePage}
-                pageCount={pageCount}
+                page={itemResult.page}
+                pageCount={itemResult.pageCount}
                 searchParams={{
                   category: selectedCategory,
                   q: query,

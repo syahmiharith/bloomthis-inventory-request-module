@@ -12,8 +12,16 @@ export async function GET(request: Request) {
       status: url.searchParams.get("status") ?? undefined,
     });
     const viewer = await getCurrentUser();
-    const requests = await listRequests(filters, viewer);
-    return NextResponse.json({ requests });
+    const result = await listRequests(
+      {
+        ...filters,
+        category: url.searchParams.get("category") ?? undefined,
+        page: Number(url.searchParams.get("page") ?? "1"),
+        q: url.searchParams.get("q") ?? undefined,
+      },
+      viewer,
+    );
+    return NextResponse.json({ requests: result.rows, ...result });
   } catch (error) {
     return handleRouteError(error);
   }

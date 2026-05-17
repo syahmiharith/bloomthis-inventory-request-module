@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import {
@@ -20,13 +20,25 @@ import {
 import { createAuditLog } from "./audit.service";
 
 export async function listRequests(
-  filters: { status?: RequestStatus },
+  filters: {
+    category?: string;
+    page?: number;
+    pageSize?: number;
+    q?: string;
+    status?: RequestStatus;
+  },
   viewer?: User,
 ) {
-  return listRequestsCached(
-    filters.status ?? "",
-    viewer?.id ?? "",
-    viewer?.role ?? "",
+  return withDevTiming("listRequests", () =>
+    listRequestsCached(
+      filters.status ?? "",
+      viewer?.id ?? "",
+      viewer?.role ?? "",
+      filters.category?.trim() ?? "",
+      normalizePage(filters.page),
+      normalizePageSize(filters.pageSize),
+      filters.q?.trim() ?? "",
+    ),
   );
 }
 
@@ -34,6 +46,10 @@ const listRequestsCached = cache(async function listRequestsCached(
   status: RequestStatus | "",
   viewerId: string,
   viewerRole: User["role"] | "",
+  category: string,
+  page: number,
+  pageSize: number,
+  query: string,
 ) {
   const conditions = [];
   if (status) {
@@ -42,6 +58,45 @@ const listRequestsCached = cache(async function listRequestsCached(
   if (viewerRole === "employee") {
     conditions.push(eq(inventoryRequests.requesterId, viewerId));
   }
+  if (category) {
+    conditions.push(
+      sql`exists (
+        select 1
+        from inventory_request_items request_item_filter
+        inner join inventory_items item_filter
+          on item_filter.id = request_item_filter.item_id
+        where request_item_filter.request_id = ${inventoryRequests.id}
+          and item_filter.category = ${category}
+      )`,
+    );
+  }
+  if (query) {
+    const search = `%${query}%`;
+    conditions.push(
+      sql`(
+        ${inventoryRequests.requestCode} ilike ${search}
+        or ${users.name} ilike ${search}
+        or exists (
+          select 1
+          from inventory_request_items request_item_search
+          inner join inventory_items item_search
+            on item_search.id = request_item_search.item_id
+          where request_item_search.request_id = ${inventoryRequests.id}
+            and item_search.name ilike ${search}
+        )
+      )`,
+    );
+  }
+  const whereClause = conditions.length ? and(...conditions) : undefined;
+
+  const [totalRow] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(inventoryRequests)
+    .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+    .where(whereClause);
+  const totalCount = totalRow?.totalCount ?? 0;
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, pageCount);
 
   const requests = await db
     .select({
@@ -61,17 +116,36 @@ const listRequestsCached = cache(async function listRequestsCached(
     })
     .from(inventoryRequests)
     .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
-    .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(inventoryRequests.createdAt));
+    .where(whereClause)
+    .orderBy(desc(inventoryRequests.createdAt))
+    .limit(pageSize)
+    .offset((safePage - 1) * pageSize);
+  const requestIds = requests.map((request) => request.id);
+  const [itemRows, categories] = await Promise.all([
+    requestIds.length > 0
+      ? getRequestItems(requestIds)
+      : Promise.resolve([]),
+    listRequestCategoriesCached(viewerId, viewerRole),
+  ]);
+  const itemsByRequest = groupRequestItems(itemRows);
 
-  return Promise.all(requests.map((request) => hydrateRequest(request)));
+  return {
+    categories,
+    page: safePage,
+    pageCount,
+    pageSize,
+    rows: requests.map((request) => ({
+      ...request,
+      createdAt: request.createdAt.toISOString(),
+      items: itemsByRequest.get(request.id) ?? [],
+    })),
+    totalCount,
+  };
 });
 
 export async function getRequestById(id: string, viewer?: User) {
-  const request = await getRequestByIdCached(
-    id,
-    viewer?.id ?? "",
-    viewer?.role ?? "",
+  const request = await withDevTiming("getRequestById", () =>
+    getRequestByIdCached(id, viewer?.id ?? "", viewer?.role ?? ""),
   );
   if (!request) {
     throw new NotFoundError("Request not found.");
@@ -84,10 +158,37 @@ const getRequestByIdCached = cache(async function getRequestByIdCached(
   viewerId: string,
   viewerRole: User["role"] | "",
 ) {
-  const [request] = await listRequestsCached("", viewerId, viewerRole).then(
-    (rows) => rows.filter((row) => row.id === id),
-  );
-  return request ?? null;
+  const conditions = [eq(inventoryRequests.id, id)];
+  if (viewerRole === "employee") {
+    conditions.push(eq(inventoryRequests.requesterId, viewerId));
+  }
+
+  const [request] = await db
+    .select({
+      id: inventoryRequests.id,
+      requestCode: inventoryRequests.requestCode,
+      requesterId: inventoryRequests.requesterId,
+      requesterName: users.name,
+      department: inventoryRequests.department,
+      warehouse: inventoryRequests.warehouse,
+      requiredBy: inventoryRequests.requiredBy,
+      priority: inventoryRequests.priority,
+      reason: inventoryRequests.reason,
+      status: inventoryRequests.status,
+      approverId: inventoryRequests.approverId,
+      adminComment: inventoryRequests.adminComment,
+      createdAt: inventoryRequests.createdAt,
+    })
+    .from(inventoryRequests)
+    .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+    .where(and(...conditions))
+    .limit(1);
+
+  if (!request) {
+    return null;
+  }
+
+  return hydrateRequest(request);
 });
 
 export async function createRequest(input: unknown, actor: User) {
@@ -279,7 +380,7 @@ async function fulfillRequest(
         .where(
           and(
             eq(inventoryItems.id, line.itemId),
-            sql`${inventoryItems.quantityOnHand} >= ${quantityToFulfill}`,
+            sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} >= ${quantityToFulfill}`,
           ),
         )
         .returning({ id: inventoryItems.id });
@@ -322,24 +423,7 @@ async function hydrateRequest(request: {
   createdAt: Date;
 }) {
   const [items, history, approver] = await Promise.all([
-    db
-      .select({
-        id: inventoryRequestItems.id,
-        itemId: inventoryRequestItems.itemId,
-        itemName: inventoryItems.name,
-        itemSku: inventoryItems.sku,
-        itemCategory: inventoryItems.category,
-        availableQuantity: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
-        requestedQuantity: inventoryRequestItems.quantityRequested,
-        approvedQuantity: inventoryRequestItems.quantityApproved,
-        unit: inventoryRequestItems.unit,
-      })
-      .from(inventoryRequestItems)
-      .innerJoin(
-        inventoryItems,
-        eq(inventoryRequestItems.itemId, inventoryItems.id),
-      )
-      .where(eq(inventoryRequestItems.requestId, request.id)),
+    getRequestItems([request.id]),
     db
       .select()
       .from(requestHistory)
@@ -368,4 +452,89 @@ async function hydrateRequest(request: {
     requestHistory: serializedHistory,
     auditLogs: serializedHistory,
   };
+}
+
+async function getRequestItems(requestIds: string[]) {
+  return db
+    .select({
+      id: inventoryRequestItems.id,
+      requestId: inventoryRequestItems.requestId,
+      itemId: inventoryRequestItems.itemId,
+      itemName: inventoryItems.name,
+      itemSku: inventoryItems.sku,
+      itemCategory: inventoryItems.category,
+      availableQuantity: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+      requestedQuantity: inventoryRequestItems.quantityRequested,
+      approvedQuantity: inventoryRequestItems.quantityApproved,
+      unit: inventoryRequestItems.unit,
+    })
+    .from(inventoryRequestItems)
+    .innerJoin(inventoryItems, eq(inventoryRequestItems.itemId, inventoryItems.id))
+    .where(inArray(inventoryRequestItems.requestId, requestIds))
+    .orderBy(asc(inventoryItems.name));
+}
+
+function groupRequestItems(
+  itemRows: Awaited<ReturnType<typeof getRequestItems>>,
+) {
+  const result = new Map<string, Array<Omit<(typeof itemRows)[number], "requestId">>>();
+  for (const row of itemRows) {
+    const current = result.get(row.requestId) ?? [];
+    const { requestId, ...item } = row;
+    current.push(item);
+    result.set(requestId, current);
+  }
+  return result;
+}
+
+const listRequestCategoriesCached = cache(
+  async function listRequestCategoriesCached(
+    viewerId: string,
+    viewerRole: User["role"] | "",
+  ) {
+    const conditions = [];
+    if (viewerRole === "employee") {
+      conditions.push(eq(inventoryRequests.requesterId, viewerId));
+    }
+
+    const rows = await db
+      .selectDistinct({ category: inventoryItems.category })
+      .from(inventoryItems)
+      .innerJoin(
+        inventoryRequestItems,
+        eq(inventoryRequestItems.itemId, inventoryItems.id),
+      )
+      .innerJoin(
+        inventoryRequests,
+        eq(inventoryRequestItems.requestId, inventoryRequests.id),
+      )
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(asc(inventoryItems.category));
+
+    return rows.map((row) => row.category);
+  },
+);
+
+function normalizePage(page?: number) {
+  return Math.max(1, Number.isFinite(page) ? Math.floor(page ?? 1) : 1);
+}
+
+function normalizePageSize(pageSize?: number) {
+  const value = Number.isFinite(pageSize)
+    ? Math.floor(pageSize ?? 25)
+    : 25;
+  return Math.min(Math.max(value, 1), 100);
+}
+
+async function withDevTiming<T>(label: string, fn: () => Promise<T>) {
+  if (process.env.NODE_ENV !== "development") {
+    return fn();
+  }
+
+  const startedAt = performance.now();
+  try {
+    return await fn();
+  } finally {
+    console.info(`[db:${label}] ${Math.round(performance.now() - startedAt)}ms`);
+  }
 }
