@@ -1,80 +1,278 @@
-# Inventory Request Module
+# BloomThis Internal Tool - Inventory Request Module
 
-Simple internal inventory request system for an internship technical assignment. Employees browse inventory and submit requests. Admins create inventory items, review requests, approve or reject them, and fulfill approved requests when stock is sufficient.
+Full-stack internal inventory request module built with Next.js, TypeScript,
+Drizzle ORM, and Supabase PostgreSQL.
 
-The project intentionally avoids production authentication and extra workflows. It focuses on clear UX, server-side business rules, PostgreSQL persistence, and reviewer-friendly code.
+The application models a practical operations workflow: employees request
+inventory, admins review and approve requests, and approved requests are
+fulfilled only when stock is available. The implementation emphasizes
+server-side correctness, transaction-safe stock mutation, clear role separation,
+and reviewer-verifiable workflows.
 
-## Tech Stack
+## Executive Summary
 
-- Next.js App Router
-- TypeScript
-- Supabase Postgres
-- Drizzle ORM
-- Zod
-- Vitest
-- Plain CSS
+This project demonstrates an end-to-end inventory request system with:
+
+- role-based demo flows for employees and admins
+- multi-item request creation
+- request approval, rejection, fulfillment, and history tracking
+- transaction-safe stock deduction during fulfillment
+- paginated inventory and request workspaces
+- master/detail side-panel navigation
+- seeded demo data for repeatable review
+- unit, component, integration, and E2E test coverage
+
+The scope is intentionally focused. Production authentication, procurement,
+notifications, and supplier workflows are documented as future hardening areas
+rather than simulated as incomplete features.
+
+## Baseline Scope
+
+This project is an internal inventory request system for a technical review or
+demo environment.
+
+It intentionally keeps these boundaries:
+
+- Authentication is simulated through seeded demo users.
+- Demo roles are limited to `employee` and `admin`.
+- Supabase is used as hosted PostgreSQL.
+- Drizzle ORM remains the application data access layer.
+- Stock is mutated only during fulfillment.
+- Migrations and seeding are manual operational steps, not automatic Vercel
+  build steps.
+
+These constraints keep the implementation focused on correctness,
+database-backed workflows, and clear reviewability.
+
+## Core Workflows
+
+### Employee Workflow
+
+Employees can:
+
+1. browse available inventory
+2. create inventory requests
+3. request one or more item lines
+4. track request status
+5. view request details and history
+
+### Admin Workflow
+
+Admins can:
+
+1. create inventory items
+2. review employee requests
+3. approve pending requests
+4. reject pending requests
+5. fulfill approved requests when stock is sufficient
+6. view inventory and request history
+
+## Business Rules
+
+The request lifecycle is enforced server-side.
+
+| Rule                | Behavior                                                   |
+| ------------------- | ---------------------------------------------------------- |
+| Request creation    | New requests start as `pending`                            |
+| Approval            | Approval does not deduct or reserve stock                  |
+| Rejection           | Rejection does not deduct stock                            |
+| Fulfillment         | Only `approved` requests can be fulfilled                  |
+| Stock mutation      | Stock is deducted only during fulfillment                  |
+| Insufficient stock  | Fulfillment fails and leaves request/inventory unchanged   |
+| Terminal statuses   | `fulfilled` and `rejected` requests are terminal           |
+| History             | Request creation and status changes append request history |
+| Multi-item requests | A request can contain one or more item lines               |
+| Stock safety        | Stock is validated inside the server-side transaction      |
 
 ## Implemented Routes
 
-- `/` dashboard
-- `/inventory` inventory list
-- `/inventory/new` create inventory item
-- `/requests` request list
-- `/requests/new` create request
-- `/requests/[id]` request detail and history
+| Route             | Description                           |
+| ----------------- | ------------------------------------- |
+| `/`               | Dashboard                             |
+| `/inventory`      | Inventory list and filters            |
+| `/inventory/new`  | Create inventory item modal route     |
+| `/inventory/[id]` | Inventory item detail side panel      |
+| `/requests`       | Request list and filters              |
+| `/requests/new`   | Create inventory request modal route  |
+| `/requests/[id]`  | Request detail side panel and history |
 
-## Core Business Rules
+## Tech Stack
 
-- New requests start as `pending`.
-- Approving a request does not deduct or reserve stock.
-- Rejecting a request does not deduct stock.
-- Fulfilling a request deducts stock only when the request is `approved`.
-- Fulfillment checks stock inside the server-side transaction.
-- Insufficient stock leaves the request and inventory unchanged.
-- Fulfilled and rejected requests are terminal.
-- Request creation and status changes append request history.
-- Demo roles are intentionally simple: `admin` and `employee`.
+| Layer         | Technology                              |
+| ------------- | --------------------------------------- |
+| Framework     | Next.js App Router                      |
+| Language      | TypeScript                              |
+| UI            | React, plain CSS, Lucide React          |
+| Database      | Supabase PostgreSQL                     |
+| ORM           | Drizzle ORM                             |
+| Validation    | Zod                                     |
+| Testing       | Vitest, Testing Library, Playwright     |
+| Deployment    | Vercel                                  |
+| Observability | Vercel Analytics, Vercel Speed Insights |
 
-## Setup
+## Architecture Highlights
 
-Install dependencies:
+### Server-Side Business Logic
+
+Business rules are enforced in server-side services and actions, not only in
+the UI. This protects status transitions and stock deduction from client-side
+inconsistencies.
+
+### Transaction-Safe Fulfillment
+
+Fulfillment validates stock inside the database transaction before deducting
+inventory. If stock is insufficient, the request and inventory records remain
+unchanged.
+
+### Clear Data Access Layer
+
+Database access is isolated through service modules and Drizzle ORM. Client
+components do not import the database client.
+
+### Reviewer-Friendly Demo Data
+
+The seed script creates demo users, inventory items, request records, request
+item lines, multiple request statuses, low-stock items, out-of-stock items, and
+multi-item requests.
+
+### Manual Migration Discipline
+
+Database migrations are intentionally run manually against the target
+environment. They are not run automatically during Vercel builds.
+
+## Project Structure
+
+```text
+app/
+  (app)/
+    inventory/
+    requests/
+  globals.css
+
+components/
+  layout/
+  ui/
+    badges/
+    button/
+    forms/
+    modal/
+    skeleton/
+    table/
+
+features/
+  dashboard/
+    components/
+    services/
+  inventory/
+    actions/
+    components/
+    services/
+  requests/
+    actions/
+    components/
+    services/
+
+db/
+  index.ts
+  schema.ts
+  seed.ts
+  migrations/
+
+lib/
+  auth.ts
+  cache-tags.ts
+  constants.ts
+  errors.ts
+  inventory.ts
+  server-cache.ts
+  validations.ts
+
+services/
+  audit.service.ts
+  dashboard.service.ts
+  item.service.ts
+  request.service.ts
+
+styles/
+  badges.css
+  dashboard.css
+  inventory.css
+  layout.css
+  requests.css
+  responsive.css
+  side-panel.css
+  tables.css
+  tokens.css
+
+tests/
+  component/
+  e2e/
+  integration/
+  unit/
+```
+
+`app/` remains the route layer. Domain UI and data services live under
+`features/`, while `services/` keeps compatibility exports and cross-domain
+services.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js
+- npm
+- PostgreSQL or a Supabase project
+- Docker, optional for local PostgreSQL
+
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-Copy environment variables:
+### Configure Environment
 
 ```bash
 cp .env.example .env.local
 ```
 
-For local Docker Postgres, set `DATABASE_URL` to the Docker connection string from
-`docker-compose.yml`, then start PostgreSQL:
+Set at least one runtime database connection variable:
+
+```bash
+DATABASE_URL=postgresql://...
+```
+
+or:
+
+```bash
+POSTGRES_URL=postgresql://...
+```
+
+### Start Local PostgreSQL with Docker
 
 ```bash
 docker compose up -d
 ```
 
-Run migrations:
+### Run Migrations
 
 ```bash
 npm run db:migrate
 ```
 
-Seed demo data:
+### Seed Demo Data
 
 ```bash
 npm run db:seed
 ```
 
-Verify database contents:
+### Verify Database Contents
 
 ```bash
 npm run db:verify
 ```
 
-Run locally:
+### Run the App Locally
 
 ```bash
 npm run dev
@@ -84,26 +282,32 @@ Open `http://localhost:3000`.
 
 ## Environment Variables
 
-Required for local development and production:
+### Required
 
-- `DATABASE_URL` or `POSTGRES_URL`: Supabase Postgres connection string used by the app at runtime. Vercel's Supabase integration commonly provides `POSTGRES_URL`.
+| Variable                         | Description                          |
+| -------------------------------- | ------------------------------------ |
+| `DATABASE_URL` or `POSTGRES_URL` | Runtime PostgreSQL connection string |
 
-Optional:
+### Optional
 
-- `MIGRATE_DATABASE_URL`: direct or session-pooler database URL for Drizzle migrations. Falls back to `DATABASE_URL`, `POSTGRES_URL_NON_POOLING`, then `POSTGRES_URL` when omitted.
-- `POSTGRES_URL_NON_POOLING`: Supabase direct/non-pooling URL commonly provided by the Vercel integration.
-- `TEST_DATABASE_URL`: PostgreSQL connection string for integration tests.
-- `DEMO_USER_EMAIL`: initial seeded demo user email. Defaults to `admin@inventory.local`.
+| Variable                   | Description                                                  |
+| -------------------------- | ------------------------------------------------------------ |
+| `MIGRATE_DATABASE_URL`     | Database URL used by Drizzle migrations                      |
+| `POSTGRES_URL_NON_POOLING` | Supabase direct/non-pooling database URL                     |
+| `TEST_DATABASE_URL`        | PostgreSQL URL used by integration tests                     |
+| `DEMO_USER_EMAIL`          | Initial demo user email. Defaults to `admin@inventory.local` |
 
-Database connection strings are read server-side from `process.env` in `db/index.ts`. No database environment variables are exposed with `NEXT_PUBLIC_`, and the app does not use `NEXT_PUBLIC_DATABASE_URL`.
+Database credentials are read server-side only. Do not expose database URLs
+with `NEXT_PUBLIC_` environment variables.
 
-Safe local env status check:
+Run a safe environment status check:
 
 ```bash
 npm run env:check
 ```
 
-The command checks `DATABASE_URL` first, then `POSTGRES_URL`. It prints only `DATABASE_URL_STATUS=missing`, `DATABASE_URL_STATUS=localhost`, or `DATABASE_URL_STATUS=hosted`. It never prints the actual connection string.
+This reports whether a database URL is missing, local, or hosted. It does not
+print secrets.
 
 Example `.env.local` shape without secrets:
 
@@ -116,19 +320,25 @@ TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/inventory_request_
 DEMO_USER_EMAIL=admin@inventory.local
 ```
 
-## Supabase Backend Setup
+## Supabase Setup
 
 1. Create a Supabase project.
-2. Open Project Settings -> Database -> Connection string.
-3. Use the Supabase/Vercel runtime connection string as `DATABASE_URL` or `POSTGRES_URL`.
-4. Use `MIGRATE_DATABASE_URL` for migrations when you want a separate migration connection.
-5. Set the same production values in Vercel Project Settings.
+2. Open **Project Settings -> Database -> Connection string**.
+3. Use the Supabase transaction pooler connection string for `DATABASE_URL` or
+   `POSTGRES_URL` at runtime.
+4. Optionally configure `MIGRATE_DATABASE_URL` for migration execution.
+5. Run migrations manually against the target database.
+6. Seed demo data only for local, demo, or review environments.
 
-This app keeps Drizzle as the data access layer. Supabase is used as hosted PostgreSQL only; `supabase-js` is not needed unless Auth, Storage, or other Supabase platform features are added later.
+Supabase is used as hosted PostgreSQL. The app does not require `supabase-js`
+unless Supabase Auth, Storage, or other Supabase platform features are added
+later.
 
-Because this app uses `postgres.js` with Supabase transaction pooling, the database client sets `prepare: false`.
+Because the app uses `postgres.js` with Supabase transaction pooling, prepared
+statements are disabled with `prepare: false`. The runtime client also uses a
+small connection pool and fail-fast timeout settings for Vercel compatibility.
 
-## Database Migration And Seed
+## Database Workflow
 
 Generate a migration after schema changes:
 
@@ -142,25 +352,52 @@ Apply migrations:
 npm run db:migrate
 ```
 
-Seed demo users, inventory, and requests:
+Seed demo data:
 
 ```bash
 npm run db:seed
 ```
 
-The seed script is manual only and is not run during Vercel builds. It creates a deterministic demo data set with 50+ inventory items, 30+ requests, multiple statuses, multi-item requests, low-stock items, and out-of-stock items.
-
-Verify the currently configured database:
+Verify database counts:
 
 ```bash
 npm run db:verify
 ```
 
-This prints only aggregate counts for users, inventory items, requests, request item lines, request statuses, and inventory categories. It does not print connection strings or secrets.
+The verification script prints aggregate counts only. It does not expose
+database credentials or secrets.
 
-Drizzle uses `MIGRATE_DATABASE_URL` when present and otherwise falls back to `DATABASE_URL`, `POSTGRES_URL_NON_POOLING`, then `POSTGRES_URL`. Do not run destructive migrations automatically during a Vercel build. Run migrations manually against the target Supabase database before or during a controlled release step.
+Drizzle uses `MIGRATE_DATABASE_URL` when present and otherwise falls back to
+`DATABASE_URL`, `POSTGRES_URL_NON_POOLING`, then `POSTGRES_URL`. Do not run
+destructive migrations automatically during a Vercel build. Run migrations
+manually against the target Supabase database before or during a controlled
+release step.
 
-## Tests
+## Available Scripts
+
+| Command                    | Purpose                                  |
+| -------------------------- | ---------------------------------------- |
+| `npm run dev`              | Start the development server             |
+| `npm run build`            | Build for production                     |
+| `npm run start`            | Start the production server              |
+| `npm run lint`             | Run Next.js linting                      |
+| `npm run typecheck`        | Run TypeScript checks                    |
+| `npm run format`           | Format files with Prettier               |
+| `npm run format:check`     | Check formatting                         |
+| `npm run test`             | Run all Vitest suites                    |
+| `npm run test:unit`        | Run unit tests                           |
+| `npm run test:component`   | Run component tests                      |
+| `npm run test:integration` | Run integration tests                    |
+| `npm run test:e2e`         | Run Playwright E2E tests                 |
+| `npm run test:watch`       | Run Vitest in watch mode                 |
+| `npm run env:check`        | Check database environment status safely |
+| `npm run db:generate`      | Generate Drizzle migrations              |
+| `npm run db:migrate`       | Apply Drizzle migrations                 |
+| `npm run db:push`          | Push schema changes with Drizzle         |
+| `npm run db:verify`        | Print safe aggregate database counts     |
+| `npm run db:seed`          | Seed demo data                           |
+
+## Testing
 
 Run all Vitest suites:
 
@@ -168,7 +405,7 @@ Run all Vitest suites:
 npm run test
 ```
 
-Focused suites:
+Run focused suites:
 
 ```bash
 npm run test:unit
@@ -183,41 +420,42 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The Playwright config seeds the database and starts the Next.js dev server when
-`PLAYWRIGHT_BASE_URL` is not provided. To test an already-running local or
-deployed app:
+Test an already-running local app:
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
 ```
 
-The integration suite covers:
+To test a deployed app, use a disposable demo or staging deployment because the
+E2E suite mutates seeded demo data:
 
-- creating inventory items
-- new request starts as `pending`
-- creating requests
-- approve does not deduct stock
-- reject does not deduct stock
-- fulfill deducts stock
-- fulfill fails when stock is insufficient
-- fulfilled request cannot be fulfilled again
-- stock never becomes negative
-- request history is written for creation and status changes
+```bash
+PLAYWRIGHT_BASE_URL=https://your-project.vercel.app npm run test:e2e
+```
 
-The Playwright suite covers:
+### Test Coverage Focus
 
-- smoke loading core assignment routes
-- employee request creation
-- admin approve and fulfill flow
-- insufficient stock blocking fulfillment
-- employee role hiding admin actions
+The test suite covers the primary correctness and workflow requirements:
 
-Known testing limitations:
+- inventory item creation
+- request creation
+- pending status on new requests
+- approval without stock deduction
+- rejection without stock deduction
+- fulfillment with stock deduction
+- fulfillment blocked by insufficient stock
+- terminal request statuses
+- stock never becoming negative
+- request history writes
+- employee/admin role behavior
+- core route smoke coverage
 
-- E2E tests use seeded demo data and the simple demo role switcher.
-- E2E tests are intentionally serial because they mutate shared demo data.
-- Load testing is not included; the assignment focuses on correctness and
-  reviewer-verifiable flows.
+### Testing Notes
+
+- E2E tests use seeded demo data.
+- E2E tests are intentionally serial because they mutate shared demo records.
+- Load testing is not included because the project scope focuses on workflow
+  correctness and reviewer-verifiable behavior.
 
 ## Production Build
 
@@ -225,9 +463,7 @@ Known testing limitations:
 npm run build
 ```
 
-This is the expected Vercel build command.
-
-For local deployment readiness, run:
+Recommended local release check:
 
 ```bash
 npm run typecheck
@@ -239,78 +475,129 @@ npm run build
 
 ## Vercel Deployment
 
-Manual deployment steps:
-
 1. Push the repository to GitHub.
-2. Create or select a Supabase Postgres database.
-3. Ensure Vercel has a runtime database environment variable:
+2. Create or select a Supabase PostgreSQL database.
+3. Configure Vercel environment variables:
    - `DATABASE_URL` or `POSTGRES_URL`
-4. Add optional migration environment variable if used:
-   - `MIGRATE_DATABASE_URL`
-5. Import the project into Vercel.
-6. Keep the build command as `npm run build`.
-7. Run database migrations against production:
+   - optional `MIGRATE_DATABASE_URL`
+4. Import the project into Vercel.
+5. Keep the build command as:
+
+```bash
+npm run build
+```
+
+6. Run migrations manually against production:
 
 ```bash
 npm run db:migrate
 ```
 
-8. Seed demo data if this is a review/demo deployment:
+7. Seed demo data only for review/demo deployments:
 
 ```bash
 npm run db:seed
 ```
 
-9. Deploy from Vercel.
-10. Verify:
+8. Deploy from Vercel.
+9. Verify the main routes:
+   - `/`
+   - `/inventory`
+   - `/inventory/new`
+   - `/inventory/[id]`
+   - `/requests`
+   - `/requests/new`
+   - `/requests/[id]`
 
-- `/`
-- `/inventory`
-- `/inventory/new`
-- `/requests`
-- `/requests/new`
-- `/requests/[id]`
+No Docker setup is required for Vercel. Secrets should be configured in Vercel
+Project Settings and never committed.
 
-To verify a Vercel deployment with Playwright after deployment:
+## Operational Notes
 
-```bash
-PLAYWRIGHT_BASE_URL=https://your-project.vercel.app npm run test:e2e
-```
-
-No Docker setup is required for Vercel. Secrets must be configured in Vercel Project Settings and not committed.
-
-## Vercel Readiness Notes
-
-- Server-side database access is isolated to server modules, route handlers, and server actions.
+- Runtime database access is server-side only.
 - Client components do not import the database client.
-- Route handlers and server actions use the App Router deployment model.
-- `DATABASE_URL` and Vercel/Supabase `POSTGRES_URL` are documented and read from environment variables.
-- Runtime database access uses Supabase Transaction Pooler with `prepare: false`.
-- Migrations are manual and are not run during Vercel build.
-- `.env` and `.env.local` are ignored by Git.
-- `.env.example` contains only local placeholder values.
+- Server actions and route handlers follow the App Router model.
+- Migrations are manual release steps.
+- `.env` and `.env.local` should remain ignored by Git.
+- `.env.example` should contain placeholders only.
+- Demo data should be seeded intentionally, not automatically during production
+  builds.
+
+## Security and Production Hardening
+
+The current implementation uses a demo role switcher and is not a production
+authentication system.
+
+For production use, add:
+
+- real authentication and session management
+- role-based authorization tied to authenticated identity
+- Supabase Row Level Security policies, if using Supabase client access
+- audit retention policy
+- operational monitoring and alerting
+- error tracking
+- mutation rate limiting
+- deployment migration controls
+- backup and restore procedures
+
+Do not enable Supabase Row Level Security without policies. Enabling RLS
+without policies can block expected data access.
+
+## Design Decisions
+
+### Why approval does not deduct stock
+
+Approval represents administrative acceptance of the request. Stock is deducted
+only when the request is fulfilled, which better matches warehouse or
+operations workflows where approval and physical issuance are separate steps.
+
+### Why fulfillment is transactional
+
+Fulfillment is the only workflow step that mutates inventory. The transaction
+ensures that stock checks and stock deduction happen atomically, preventing
+partial updates and negative stock.
+
+### Why authentication is simulated
+
+The project focuses on inventory request correctness, database workflows, and
+reviewer-verifiable behavior. Production identity, authorization, and
+access-control hardening are documented as future work rather than partially
+implemented.
+
+### Why Supabase is used as PostgreSQL
+
+Supabase provides hosted PostgreSQL suitable for deployment and review while
+still allowing the app to use Drizzle ORM as the primary data access and
+migration layer.
 
 ## Assumptions
 
-- Demo role switching is acceptable for the assignment.
-- Supabase is the hosted PostgreSQL backend; Drizzle remains the ORM.
-- The requester is the current demo user; the requester field on the request form is read-only to match server-side scoping.
-- Inventory requests support one or more item lines. Creating a request never deducts stock; fulfillment validates every line server-side.
+- Demo role switching is acceptable for the current review scope.
+- The requester is the current demo user.
+- The request form requester field is read-only to match server-side scoping.
+- Inventory requests support one or more item lines.
 - Approval quantity equals requested quantity.
-- Email notifications, real authentication, analytics, and multi-level approvals are intentionally out of scope.
+- Email notifications, real authentication, procurement, supplier workflows,
+  and multi-level approvals are out of scope.
 
 ## Known Limitations
 
 - Authentication is simulated with seeded demo users and a cookie.
-- Supabase Auth is not implemented; the app intentionally uses a demo role switcher.
-- There is no payment, procurement, or supplier workflow in the assignment-facing UI.
-- Production use would need real identity, audit retention policy, and operational monitoring.
+- Supabase Auth is not implemented.
+- Notification workflows are not implemented.
+- Procurement and supplier workflows are not part of the assignment-facing UI.
+- Load testing is not included.
+- Production use requires additional identity, authorization, monitoring, and
+  operational controls.
 
 ## AI Usage
 
-AI tools used:
+AI tools used during development:
 
 - ChatGPT
 - Codex
 
-AI was used for planning, implementation assistance, test coverage, and documentation drafting. The database schema, request status logic, stock mutation rules, validation, tests, and final documentation were reviewed and adjusted manually during implementation.
+AI assisted with planning, implementation support, test coverage, and
+documentation drafting. Business rules, database logic, validation, request
+status transitions, tests, and final documentation were reviewed and adjusted
+manually.
