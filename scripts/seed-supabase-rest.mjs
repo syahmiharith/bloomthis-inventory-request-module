@@ -234,54 +234,62 @@ async function ensureRequests(users, items) {
 }
 
 async function ensureHistory(requests) {
-  const existing = await select("request_history", "request_id,action");
-  const existingKeys = new Set(
-    existing.map((entry) => `${entry.request_id}:${entry.action}`),
+  const [existingHistory, existingAudit] = await Promise.all([
+    select("request_history", "request_id,action"),
+    select("audit_logs", "request_id,action"),
+  ]);
+  const existingHistoryKeys = new Set(
+    existingHistory.map((entry) => `${entry.request_id}:${entry.action}`),
   );
-  const rows = [];
+  const existingAuditKeys = new Set(
+    existingAudit.map((entry) => `${entry.request_id}:${entry.action}`),
+  );
+  const expectedRows = [];
 
   for (const request of requests) {
-    if (!existingKeys.has(`${request.id}:request_created`)) {
-      rows.push({
-        request_id: request.id,
-        actor_name: "System",
-        actor_role: "System",
-        action: "request_created",
-        to_status: "pending",
-        created_at: request.created_at ?? startedAt.toISOString(),
-      });
-    }
-    if (
-      (request.status === "approved" || request.status === "fulfilled") &&
-      !existingKeys.has(`${request.id}:request_approved`)
-    ) {
-      rows.push({
+    const createdAt = request.created_at
+      ? new Date(request.created_at)
+      : startedAt;
+    expectedRows.push({
+      request_id: request.id,
+      actor_name: "System",
+      actor_role: "System",
+      action: "request_created",
+      from_status: null,
+      to_status: "pending",
+      created_at: createdAt.toISOString(),
+    });
+
+    if (request.status === "approved" || request.status === "fulfilled") {
+      expectedRows.push({
         request_id: request.id,
         actor_name: "Aisha Admin",
         actor_role: "Admin",
         action: "request_approved",
         from_status: "pending",
         to_status: "approved",
+        created_at: new Date(
+          createdAt.getTime() + 2 * 60 * 60 * 1000,
+        ).toISOString(),
       });
     }
-    if (
-      request.status === "fulfilled" &&
-      !existingKeys.has(`${request.id}:request_fulfilled`)
-    ) {
-      rows.push({
+
+    if (request.status === "fulfilled") {
+      expectedRows.push({
         request_id: request.id,
         actor_name: "Aisha Admin",
         actor_role: "Admin",
         action: "request_fulfilled",
         from_status: "approved",
         to_status: "fulfilled",
+        created_at: new Date(
+          createdAt.getTime() + 6 * 60 * 60 * 1000,
+        ).toISOString(),
       });
     }
-    if (
-      request.status === "rejected" &&
-      !existingKeys.has(`${request.id}:request_rejected`)
-    ) {
-      rows.push({
+
+    if (request.status === "rejected") {
+      expectedRows.push({
         request_id: request.id,
         actor_name: "Aisha Admin",
         actor_role: "Admin",
@@ -289,12 +297,21 @@ async function ensureHistory(requests) {
         from_status: "pending",
         to_status: "rejected",
         note: "Duplicate request; consolidate with weekly order.",
+        metadata: {
+          comment: "Duplicate request; consolidate with weekly order.",
+        },
+        created_at: new Date(
+          createdAt.getTime() + 90 * 60 * 1000,
+        ).toISOString(),
       });
     }
   }
 
-  if (rows.length > 0) {
-    const historyRows = rows.map((row) => ({
+  const historyRows = expectedRows
+    .filter(
+      (row) => !existingHistoryKeys.has(`${row.request_id}:${row.action}`),
+    )
+    .map((row) => ({
       request_id: row.request_id,
       actor_name: row.actor_name,
       actor_role: row.actor_role,
@@ -305,14 +322,26 @@ async function ensureHistory(requests) {
       metadata: row.metadata ?? {},
       created_at: row.created_at ?? startedAt.toISOString(),
     }));
+
+  const auditRows = expectedRows
+    .filter((row) => !existingAuditKeys.has(`${row.request_id}:${row.action}`))
+    .map(({ actor_role: _actorRole, note: _note, ...row }) => ({
+      item_id: null,
+      request_id: row.request_id,
+      actor_name: row.actor_name,
+      action: row.action,
+      from_status: row.from_status ?? null,
+      to_status: row.to_status ?? null,
+      metadata: row.metadata ?? {},
+      created_at: row.created_at ?? startedAt.toISOString(),
+    }));
+
+  if (historyRows.length > 0) {
     await insert("request_history", historyRows);
-    await insert(
-      "audit_logs",
-      historyRows.map(({ actor_role: _actorRole, note: _note, ...row }) => ({
-        item_id: null,
-        ...row,
-      })),
-    );
+  }
+
+  if (auditRows.length > 0) {
+    await insert("audit_logs", auditRows);
   }
 }
 

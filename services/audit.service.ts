@@ -11,6 +11,7 @@ export type AuditInput = {
   toStatus?: RequestStatus;
   note?: string;
   metadata?: Record<string, unknown>;
+  createdAt?: Date;
 };
 
 type AuditDb = {
@@ -28,6 +29,7 @@ export async function createAuditLog(db: AuditDb, input: AuditInput) {
       fromStatus: input.fromStatus,
       toStatus: input.toStatus,
       metadata: input.metadata ?? {},
+      createdAt: input.createdAt,
     })
     .returning();
 
@@ -41,6 +43,7 @@ export async function createAuditLog(db: AuditDb, input: AuditInput) {
       fromStatus: input.fromStatus,
       toStatus: input.toStatus,
       metadata: input.metadata ?? {},
+      createdAt: input.createdAt,
     });
   }
 
