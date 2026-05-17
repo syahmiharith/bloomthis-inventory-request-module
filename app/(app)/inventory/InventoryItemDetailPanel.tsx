@@ -18,6 +18,11 @@ export function InventoryItemDetailPanel({
     item.quantityReserved,
     item.reorderPoint,
   );
+  const stockHealthPercent = normalizeStockHealthPercent(
+    item.stockHealthPercent,
+  );
+  const stockHealthLabel =
+    stockHealthPercent === null ? "-" : `${stockHealthPercent}%`;
 
   return (
     <div className="panel-detail-stack" data-testid="inventory-detail-panel">
@@ -52,7 +57,7 @@ export function InventoryItemDetailPanel({
           </div>
           <div>
             <dt>Stock health</dt>
-            <dd>{item.stockHealthPercent}%</dd>
+            <dd>{stockHealthLabel}</dd>
           </div>
           <div>
             <dt>On hand</dt>
@@ -91,19 +96,23 @@ export function InventoryItemDetailPanel({
         </div>
         <div className="stock-health-detail">
           <span
-            aria-label={`Stock health ${item.stockHealthPercent} percent`}
+            aria-label={
+              stockHealthPercent === null
+                ? "Stock health unavailable"
+                : `Stock health ${stockHealthPercent} percent`
+            }
             className="stock-health-ring stock-health-ring-large"
             role="meter"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={item.stockHealthPercent}
+            aria-valuenow={stockHealthPercent ?? undefined}
             style={
               {
-                "--stock-health": `${item.stockHealthPercent * 3.6}deg`,
+                "--stock-health": `${(stockHealthPercent ?? 0) * 3.6}deg`,
               } as CSSProperties
             }
           >
-            <strong>{item.stockHealthPercent}%</strong>
+            <strong>{stockHealthLabel}</strong>
           </span>
           <p>
             Health compares available stock with the internal operating target
@@ -201,4 +210,12 @@ function formatDate(value: Date | string) {
     month: "short",
     day: "numeric",
   });
+}
+
+function normalizeStockHealthPercent(value: number | null | undefined) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(Number(value))));
 }

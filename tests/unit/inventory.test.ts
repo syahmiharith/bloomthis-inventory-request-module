@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   availableQuantity,
+  calculateStockHealthPercent,
   calculateStockKpis,
   stockHealthInterpretation,
   stockRiskRank,
@@ -54,5 +55,46 @@ describe("inventory helpers", () => {
     );
     expect(stockRiskRank("Low Stock")).toBeLessThan(stockRiskRank("In Stock"));
     expect(stockHealthInterpretation("In Stock")).toContain("Healthy");
+  });
+
+  it("calculates stock health with active demand and a nonzero target", () => {
+    expect(
+      calculateStockHealthPercent({
+        activeDemand: 80,
+        available: 65,
+        reorderPoint: 50,
+      }),
+    ).toBe(50);
+    expect(
+      calculateStockHealthPercent({
+        activeDemand: 0,
+        available: 250,
+        reorderPoint: 50,
+      }),
+    ).toBe(100);
+  });
+
+  it("never reports out-of-stock or invalid stock health as 100 percent", () => {
+    expect(
+      calculateStockHealthPercent({
+        activeDemand: 0,
+        available: 0,
+        reorderPoint: 0,
+      }),
+    ).toBe(0);
+    expect(
+      calculateStockHealthPercent({
+        activeDemand: 100,
+        available: -5,
+        reorderPoint: 10,
+      }),
+    ).toBe(0);
+    expect(
+      calculateStockHealthPercent({
+        activeDemand: Number.NaN,
+        available: 10,
+        reorderPoint: 10,
+      }),
+    ).toBe(0);
   });
 });

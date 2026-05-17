@@ -4,6 +4,39 @@ export function availableQuantity(onHand: number, reserved: number) {
   return onHand - reserved;
 }
 
+export function calculateStockHealthPercent({
+  activeDemand = 0,
+  available,
+  reorderPoint,
+}: {
+  activeDemand?: number;
+  available: number;
+  reorderPoint: number;
+}) {
+  if (
+    !Number.isFinite(activeDemand) ||
+    !Number.isFinite(available) ||
+    !Number.isFinite(reorderPoint)
+  ) {
+    return 0;
+  }
+
+  if (available <= 0) {
+    return 0;
+  }
+
+  const internalTarget = Math.max(
+    reorderPoint * 2,
+    reorderPoint + activeDemand,
+    1,
+  );
+
+  return Math.min(
+    100,
+    Math.max(0, Math.round((available / internalTarget) * 100)),
+  );
+}
+
 export function stockStatusFromQuantities(
   onHand: number,
   reserved: number,

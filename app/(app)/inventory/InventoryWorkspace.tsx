@@ -420,25 +420,42 @@ function StockHealthCell({
   percent,
   status,
 }: {
-  percent: number;
+  percent: number | null | undefined;
   status: ReturnType<typeof stockStatusFromQuantities>;
 }) {
+  const safePercent = normalizeStockHealthPercent(percent);
   return (
     <div className="stock-health-cell">
       <span
-        aria-label={`Stock health ${percent} percent`}
+        aria-label={
+          safePercent === null
+            ? "Stock health unavailable"
+            : `Stock health ${safePercent} percent`
+        }
         className="stock-health-ring"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={percent}
-        style={{ "--stock-health": `${percent * 3.6}deg` } as CSSProperties}
+        aria-valuenow={safePercent ?? undefined}
+        style={
+          {
+            "--stock-health": `${(safePercent ?? 0) * 3.6}deg`,
+          } as CSSProperties
+        }
       >
-        <strong>{percent}%</strong>
+        <strong>{safePercent === null ? "-" : `${safePercent}%`}</strong>
       </span>
       <StockBadge status={status} />
     </div>
   );
+}
+
+function normalizeStockHealthPercent(value: number | null | undefined) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(Number(value))));
 }
 
 function formatDate(value: Date | string) {

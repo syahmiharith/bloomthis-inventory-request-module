@@ -255,11 +255,10 @@ function stockHealthExpression(
   available: SQLWrapper,
   activeDemand: SQLWrapper,
 ) {
-  const baselineTarget = sql<number>`greatest(250, least(300, ${inventoryItems.reorderPoint} * 2))`;
-  const internalTarget = sql<number>`greatest(${baselineTarget}, ${inventoryItems.reorderPoint} + ${activeDemand})`;
+  const internalTarget = sql<number>`greatest(${inventoryItems.reorderPoint} * 2, ${inventoryItems.reorderPoint} + ${activeDemand}, 1)`;
   return sql<number>`case
-    when ${internalTarget} <= 0 then 100
-    else least(100, greatest(0, round((${available})::numeric / nullif(${internalTarget}, 0) * 100)))::int
+    when ${available} <= 0 then 0
+    else least(100, greatest(0, round((${available})::numeric / ${internalTarget} * 100)))::int
   end`;
 }
 
@@ -465,7 +464,7 @@ async function getItemAnalytics(itemId: string) {
     activeDemand: row?.activeDemand ?? 0,
     approvedRequestCount: row?.approvedRequestCount ?? 0,
     pendingRequestCount: row?.pendingRequestCount ?? 0,
-    stockHealthPercent: row?.stockHealthPercent ?? 100,
+    stockHealthPercent: row?.stockHealthPercent ?? 0,
   };
 }
 
