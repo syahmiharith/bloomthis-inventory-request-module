@@ -1658,6 +1658,75 @@ tbody tr.selected td:first-child {
   white-space: nowrap;
 }
 
+.dashboard-action-list,
+.dashboard-signal-list {
+  display: grid;
+}
+
+.dashboard-action-row,
+.dashboard-signal-row,
+.dashboard-empty-action {
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  min-height: 64px;
+  color: inherit;
+  padding: 12px 16px;
+  text-decoration: none;
+}
+
+.dashboard-action-row {
+  grid-template-columns:
+    auto minmax(130px, 1fr) minmax(120px, 1.1fr) minmax(90px, 0.75fr)
+    minmax(72px, auto) 16px;
+  gap: 10px;
+}
+
+.dashboard-signal-row {
+  grid-template-columns:
+    auto minmax(140px, 1fr) minmax(130px, 1.1fr) minmax(56px, auto)
+    16px;
+  gap: 10px;
+}
+
+.dashboard-action-row:last-child,
+.dashboard-signal-row:last-child,
+.dashboard-empty-action:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-action-row strong,
+.dashboard-action-row span:not(.badge),
+.dashboard-action-row em,
+.dashboard-signal-row strong,
+.dashboard-signal-row span:not(.badge),
+.dashboard-signal-row em,
+.dashboard-empty-action span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-action-row span:not(.badge),
+.dashboard-signal-row span:not(.badge) {
+  color: var(--muted);
+}
+
+.dashboard-action-row em,
+.dashboard-signal-row em {
+  color: var(--blue);
+  font-style: normal;
+  font-weight: 750;
+  text-align: right;
+}
+
+.dashboard-empty-action {
+  grid-template-columns: minmax(0, 1fr) 16px;
+  min-height: 96px;
+  color: var(--blue);
+  font-weight: 700;
+}
+
 .timeline-list {
   display: grid;
   gap: 14px;
@@ -1747,6 +1816,9 @@ tbody tr.selected td:first-child {
 
 .kpi-card,
 .dashboard-risk-row,
+.dashboard-action-row,
+.dashboard-signal-row,
+.dashboard-empty-action,
 .quick-action-row,
 .panel-footer-link,
 .kpi-card-footer,
@@ -1768,6 +1840,9 @@ tbody tr.selected td:first-child {
 }
 
 .dashboard-risk-row:hover,
+.dashboard-action-row:hover,
+.dashboard-signal-row:hover,
+.dashboard-empty-action:hover,
 .quick-action-row:hover,
 .kpi-card-footer:hover,
 .panel-footer-link:hover {
@@ -1775,6 +1850,9 @@ tbody tr.selected td:first-child {
 }
 
 .dashboard-risk-row:hover svg,
+.dashboard-action-row:hover svg,
+.dashboard-signal-row:hover svg,
+.dashboard-empty-action:hover svg,
 .quick-action-row:hover > svg,
 .panel-footer-link:hover svg {
   transform: translateX(2px);
@@ -3004,6 +3082,8 @@ th:hover .column-resize-handle,
   }
 
   .dashboard-risk-row,
+  .dashboard-action-row,
+  .dashboard-signal-row,
   .stock-risk-row {
     grid-template-columns: 1fr;
   }

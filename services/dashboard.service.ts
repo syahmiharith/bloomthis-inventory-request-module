@@ -257,15 +257,46 @@ const getDashboardRequestKpisCached = cache(
         pendingRequests: sql<number>`count(*) filter (
           where ${inventoryRequests.status} = 'pending'
         )::int`,
+        approvedRequests: sql<number>`count(*) filter (
+          where ${inventoryRequests.status} = 'approved'
+        )::int`,
         fulfilledRequests: sql<number>`count(*) filter (
           where ${inventoryRequests.status} = 'fulfilled'
+        )::int`,
+        fulfilledThisWeek: sql<number>`count(*) filter (
+          where ${inventoryRequests.status} = 'fulfilled'
+          and ${inventoryRequests.fulfilledAt} >= ${weekStart().toISOString()}::timestamptz
+        )::int`,
+        blockedFulfillment: sql<number>`count(*) filter (
+          where ${inventoryRequests.status} = 'approved'
+          and exists (
+            select 1
+            from inventory_request_items iri
+            inner join inventory_items ii on ii.id = iri.item_id
+            where iri.request_id = ${inventoryRequests.id}
+            and ii.quantity_on_hand - ii.quantity_reserved < iri.quantity_requested
+          )
+        )::int`,
+        overSla: sql<number>`count(*) filter (
+          where ${inventoryRequests.status} in ('pending', 'approved')
+          and ${inventoryRequests.requiredBy} < ${new Date().toISOString()}::timestamptz
+        )::int`,
+        dueSoon: sql<number>`count(*) filter (
+          where ${inventoryRequests.status} in ('pending', 'approved')
+          and ${inventoryRequests.requiredBy} >= ${new Date().toISOString()}::timestamptz
+          and ${inventoryRequests.requiredBy} <= ${soonDate().toISOString()}::timestamptz
         )::int`,
       })
       .from(inventoryRequests)
       .where(requestScope);
 
     return {
+      approvedRequests: rows[0]?.approvedRequests ?? 0,
+      blockedFulfillment: rows[0]?.blockedFulfillment ?? 0,
+      dueSoon: rows[0]?.dueSoon ?? 0,
+      fulfilledThisWeek: rows[0]?.fulfilledThisWeek ?? 0,
       totalRequests: rows[0]?.totalRequests ?? 0,
+      overSla: rows[0]?.overSla ?? 0,
       pendingRequests: rows[0]?.pendingRequests ?? 0,
       fulfilledRequests: rows[0]?.fulfilledRequests ?? 0,
     };
@@ -365,21 +396,38 @@ async function getUrgentDashboardRaw(
   const now = new Date();
   const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  const [pendingRows, priorityQueueRows, inventoryRiskRows, recentActivity] =
-    await Promise.all([
+  const [
+    pendingRows,
+    priorityQueueRows,
+    inventoryRiskRows,
+    restockRecommendationRows,
+    recentActivity,
+  ] = await Promise.all([
       db
         .select({
           pending: sql<number>`count(*) filter (where ${inventoryRequests.status} = 'pending')::int`,
+          approvedWaiting: sql<number>`count(*) filter (where ${inventoryRequests.status} = 'approved')::int`,
           highPriorityPending: sql<number>`count(*) filter (
             where ${inventoryRequests.status} = 'pending' and ${inventoryRequests.priority} = 'high'
           )::int`,
           overdue: sql<number>`count(*) filter (
-            where ${inventoryRequests.status} = 'pending' and ${inventoryRequests.requiredBy} < ${now.toISOString()}::timestamptz
+            where ${inventoryRequests.status} in ('pending', 'approved')
+            and ${inventoryRequests.requiredBy} < ${now.toISOString()}::timestamptz
           )::int`,
           requiredSoon: sql<number>`count(*) filter (
-            where ${inventoryRequests.status} = 'pending'
+            where ${inventoryRequests.status} in ('pending', 'approved')
             and ${inventoryRequests.requiredBy} >= ${now.toISOString()}::timestamptz
             and ${inventoryRequests.requiredBy} <= ${soon.toISOString()}::timestamptz
+          )::int`,
+          blockedFulfillment: sql<number>`count(*) filter (
+            where ${inventoryRequests.status} = 'approved'
+            and exists (
+              select 1
+              from inventory_request_items iri
+              inner join inventory_items ii on ii.id = iri.item_id
+              where iri.request_id = ${inventoryRequests.id}
+              and ii.quantity_on_hand - ii.quantity_reserved < iri.quantity_requested
+            )
           )::int`,
         })
         .from(inventoryRequests)
@@ -392,8 +440,13 @@ async function getUrgentDashboardRaw(
           department: inventoryRequests.department,
           requiredBy: inventoryRequests.requiredBy,
           priority: inventoryRequests.priority,
+          status: inventoryRequests.status,
           available: sql<number>`min(${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved})`,
           reorderPoint: sql<number>`max(${inventoryItems.reorderPoint})`,
+          shortLines: sql<number>`count(*) filter (
+            where ${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} < ${inventoryRequestItems.quantityRequested}
+          )::int`,
+          totalQuantity: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`,
         })
         .from(inventoryRequests)
         .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
@@ -405,11 +458,25 @@ async function getUrgentDashboardRaw(
           inventoryItems,
           eq(inventoryRequestItems.itemId, inventoryItems.id),
         )
-        .where(and(scopeCondition, eq(inventoryRequests.status, "pending")))
+        .where(
+          and(
+            scopeCondition,
+            inArray(inventoryRequests.status, ["pending", "approved"]),
+          ),
+        )
         .groupBy(inventoryRequests.id, users.name)
         .orderBy(
-          sql`case when ${inventoryRequests.requiredBy} < ${now.toISOString()}::timestamptz then 0 else 1 end`,
-          sql`case when ${inventoryRequests.priority} = 'high' then 0 else 1 end`,
+          sql`case
+            when ${inventoryRequests.status} = 'approved'
+              and count(*) filter (
+                where ${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved} < ${inventoryRequestItems.quantityRequested}
+              ) > 0 then 0
+            when ${inventoryRequests.requiredBy} < ${now.toISOString()}::timestamptz then 1
+            when ${inventoryRequests.status} = 'pending' and ${inventoryRequests.priority} = 'high' then 2
+            when ${inventoryRequests.status} = 'approved' then 3
+            when ${inventoryRequests.requiredBy} <= ${soon.toISOString()}::timestamptz then 4
+            else 5
+          end`,
           asc(inventoryRequests.requiredBy),
         )
         .limit(5),
@@ -441,10 +508,56 @@ async function getUrgentDashboardRaw(
           ),
         )
         .groupBy(inventoryItems.id)
+        .having(sql`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+          where ${inventoryRequests.status} in ('pending', 'approved')
+        ), 0) > 0`)
         .orderBy(
           asc(
             sql`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
           ),
+          asc(inventoryItems.name),
+        )
+        .limit(5),
+      db
+        .select({
+          id: inventoryItems.id,
+          sku: inventoryItems.sku,
+          name: inventoryItems.name,
+          warehouse: inventoryItems.warehouse,
+          available: sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`,
+          activeDemand: sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+            where ${inventoryRequests.status} in ('pending', 'approved')
+          ), 0)::int`,
+          suggestedRestockQty: sql<number>`greatest(
+            coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+              where ${inventoryRequests.status} in ('pending', 'approved')
+            ), 0) - (${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}),
+            0
+          )::int`,
+        })
+        .from(inventoryItems)
+        .leftJoin(
+          inventoryRequestItems,
+          eq(inventoryRequestItems.itemId, inventoryItems.id),
+        )
+        .leftJoin(
+          inventoryRequests,
+          eq(inventoryRequestItems.requestId, inventoryRequests.id),
+        )
+        .groupBy(inventoryItems.id)
+        .having(sql`greatest(
+          coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+            where ${inventoryRequests.status} in ('pending', 'approved')
+          ), 0) - (${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}),
+          0
+        ) > 0`)
+        .orderBy(
+          desc(sql`greatest(
+            coalesce(sum(${inventoryRequestItems.quantityRequested}) filter (
+              where ${inventoryRequests.status} in ('pending', 'approved')
+            ), 0) - (${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}),
+            0
+          )`),
           asc(inventoryItems.name),
         )
         .limit(5),
@@ -461,6 +574,7 @@ async function getUrgentDashboardRaw(
           inventoryRequests,
           eq(auditLogs.requestId, inventoryRequests.id),
         )
+        .where(scopeCondition)
         .orderBy(desc(auditLogs.createdAt))
         .limit(5),
     ]);
@@ -485,6 +599,8 @@ async function getUrgentDashboardRaw(
   return {
     alerts: {
       pending: pendingRows[0]?.pending ?? 0,
+      approvedWaiting: pendingRows[0]?.approvedWaiting ?? 0,
+      blockedFulfillment: pendingRows[0]?.blockedFulfillment ?? 0,
       highPriorityPending: pendingRows[0]?.highPriorityPending ?? 0,
       overdue: pendingRows[0]?.overdue ?? 0,
       requiredSoon: pendingRows[0]?.requiredSoon ?? 0,
@@ -492,6 +608,7 @@ async function getUrgentDashboardRaw(
     },
     priorityQueue,
     inventoryRisk,
+    restockRecommendations: restockRecommendationRows,
     recentActivity,
   };
 }
@@ -513,12 +630,20 @@ export function deriveRequestRisk(
     available: number | null;
     reorderPoint: number | null;
     priority: "low" | "normal" | "high";
+    shortLines?: number;
+    status?: RequestStatus;
   },
   now: Date,
   soon: Date,
 ) {
+  if (request.status === "approved" && (request.shortLines ?? 0) > 0) {
+    return "Blocked";
+  }
   if (request.requiredBy < now) {
     return "Overdue";
+  }
+  if (request.status === "approved") {
+    return "Ready";
   }
   if (request.available !== null && request.available <= 0) {
     return "Out of Stock";
@@ -537,4 +662,15 @@ export function deriveRequestRisk(
     return "Due Soon";
   }
   return "Pending";
+}
+
+function weekStart() {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - 7);
+  return start;
+}
+
+function soonDate() {
+  return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 }

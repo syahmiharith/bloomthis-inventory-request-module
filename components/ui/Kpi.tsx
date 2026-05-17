@@ -23,9 +23,11 @@ export function KpiCard({
   icon,
   label,
   note,
+  analyticsName = "dashboard_card_clicked",
   tone = "neutral",
   value,
 }: {
+  analyticsName?: string;
   footerHref?: string;
   footerLabel?: string;
   icon: ReactNode;
@@ -45,7 +47,11 @@ export function KpiCard({
         </div>
       </div>
       {footerHref ? (
-        <Link className="kpi-card-footer" href={footerHref}>
+        <Link
+          className="kpi-card-footer"
+          data-analytics={analyticsName}
+          href={footerHref}
+        >
           {footerLabel}
           <span aria-hidden="true">→</span>
         </Link>

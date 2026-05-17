@@ -3,10 +3,12 @@ import type { ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  CheckCircle2,
   ClipboardList,
-  Package,
+  Clock,
   PackageCheck,
   PlusCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { getCurrentUserForShell } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -56,33 +58,37 @@ export default async function HomePage() {
   const hasStaleDashboardData =
     kpis.data.stale || priority.data.stale || recent.data.stale;
   const isAdmin = currentUser.role === "admin";
-  const priorityEntries = [
-    ...urgent.priorityQueue.map((request) => ({
-      href: `/requests/${request.id}`,
-      label: request.risk,
-      reason: `${request.requestCode} · ${request.department}`,
-      target: request.requesterName,
-    })),
-    ...urgent.inventoryRisk.map((item) => ({
-      href: `/inventory/${item.id}`,
-      label: item.status,
-      reason: `${item.pendingDemand} units in active demand`,
-      target: item.name,
-    })),
-  ].slice(0, DASHBOARD_CARD_ITEM_LIMIT);
+  const openRequests =
+    dashboard.requests.pendingRequests + dashboard.requests.approvedRequests;
+  const slaCompliance = calculateSlaCompliance(
+    openRequests,
+    dashboard.requests.overSla,
+  );
+  const actionEntries = buildActionEntries(urgent).slice(
+    0,
+    DASHBOARD_CARD_ITEM_LIMIT,
+  );
+  const slaEntries = buildSlaEntries(dashboard.requests, urgent.alerts).slice(
+    0,
+    DASHBOARD_CARD_ITEM_LIMIT,
+  );
+  const businessValueEntries = buildBusinessValueEntries(urgent).slice(
+    0,
+    DASHBOARD_CARD_ITEM_LIMIT,
+  );
 
   return (
     <main
       className="page-scroll main-scroll-region route-page dashboard-route"
       data-testid="main-scroll-region"
     >
-      <section data-testid="dashboard-page">
+      <section data-analytics-view="dashboard_viewed" data-testid="dashboard-page">
         <PageHeader
-          title={isAdmin ? "Inventory Dashboard" : "My Inventory Requests"}
+          title={isAdmin ? "Operations Cockpit" : "My Request Cockpit"}
           description={
             isAdmin
-              ? "Monitor stock, pending requests, and recent request activity."
-              : "Browse available inventory and track your demo-user requests."
+              ? "Act on requests, SLA risk, and stock pressure before they slow teams down."
+              : "Track your open requests and quickly request inventory again."
           }
         />
         {hasDashboardDataIssue ? (
@@ -99,71 +105,71 @@ export default async function HomePage() {
           {isAdmin ? (
             <>
               <KpiCard
-                footerHref="/inventory"
-                icon={<Package />}
-                label="Total Items"
-                value={dashboard.inventory.totalItems}
-                note="Inventory records"
-                tone="blue"
-              />
-              <KpiCard
-                footerHref="/inventory?stock=low"
-                icon={<AlertTriangle />}
-                label="Low Stock"
-                value={dashboard.inventory.lowStockItems}
-                note="Needs attention"
-                tone="amber"
-              />
-              <KpiCard
-                footerHref="/requests?status=pending"
-                icon={<ClipboardList />}
-                label="Pending Requests"
-                value={dashboard.requests.pendingRequests}
-                note="Waiting for review"
-                tone="red"
+                footerHref="/requests"
+                icon={<ShieldCheck />}
+                label="SLA Compliance"
+                value={`${slaCompliance}%`}
+                note={`${dashboard.requests.overSla} over SLA`}
+                tone={dashboard.requests.overSla > 0 ? "red" : "green"}
               />
               <KpiCard
                 footerHref="/requests?status=fulfilled"
-                icon={<PackageCheck />}
-                label="Fulfilled Requests"
-                value={dashboard.requests.fulfilledRequests}
-                note="Completed requests"
+                icon={<CheckCircle2 />}
+                label="Resolved This Week"
+                value={dashboard.requests.fulfilledThisWeek}
+                note={`${dashboard.requests.fulfilledRequests} total fulfilled`}
                 tone="green"
+              />
+              <KpiCard
+                footerHref="/requests?status=approved"
+                icon={<ClipboardList />}
+                label="Blocked Requests"
+                value={dashboard.requests.blockedFulfillment}
+                note="Approved but short on stock"
+                tone="red"
+              />
+              <KpiCard
+                footerHref="/inventory?stock=out"
+                icon={<AlertTriangle />}
+                label="Stockout Risk"
+                value={urgent.alerts.outOfStock}
+                note="Out-of-stock items with demand"
+                tone={urgent.alerts.outOfStock > 0 ? "red" : "blue"}
               />
             </>
           ) : (
             <>
               <KpiCard
-                footerHref="/inventory"
-                icon={<PackageCheck />}
-                label="Available Items"
-                value={dashboard.inventory.availableItems}
-                note="Currently requestable"
-                tone="blue"
-              />
-              <KpiCard
                 footerHref="/requests"
                 icon={<ClipboardList />}
-                label="My Requests"
-                value={dashboard.requests.totalRequests}
-                note={currentUser.name}
-                tone="green"
+                label="My Open Requests"
+                value={openRequests}
+                note={`${dashboard.requests.approvedRequests} approved`}
+                tone="amber"
               />
               <KpiCard
-                footerHref="/requests?status=pending"
-                icon={<AlertTriangle />}
-                label="Pending Requests"
-                value={dashboard.requests.pendingRequests}
-                note="Awaiting admin review"
-                tone="amber"
+                footerHref="/requests?status=approved"
+                icon={<PackageCheck />}
+                label="Approved Requests"
+                value={dashboard.requests.approvedRequests}
+                note="Waiting fulfillment"
+                tone="green"
               />
               <KpiCard
                 footerHref="/requests?status=fulfilled"
                 icon={<PackageCheck />}
-                label="Fulfilled Requests"
+                label="My Fulfilled Requests"
                 value={dashboard.requests.fulfilledRequests}
-                note="Completed for this user"
+                note="Completed requests"
                 tone="green"
+              />
+              <KpiCard
+                footerHref="/requests/new"
+                icon={<PlusCircle />}
+                label="Create Request"
+                value="New"
+                note={`${dashboard.inventory.availableItems} items available`}
+                tone="blue"
               />
             </>
           )}
@@ -172,115 +178,181 @@ export default async function HomePage() {
         <div className="dashboard-grid refined-dashboard-grid">
           <section className="panel dashboard-card">
             <PanelHeading
-              title="Priority Action Queue"
-              subtitle="Highest-priority stock and request work."
+              title="Today's Action Queue"
+              subtitle={
+                isAdmin
+                  ? "Highest-value actions ranked by SLA, stock, and fulfillment risk."
+                  : "Your requests that need attention or are moving through fulfillment."
+              }
             />
-            <div className="dashboard-risk-list dashboard-card-body">
-              {priorityEntries.map((entry) => (
-                <Link
-                  className="dashboard-risk-row"
-                  href={entry.href}
-                  key={entry.href}
-                >
-                  <span className={`badge ${dashboardBadgeClass(entry.label)}`}>
-                    {entry.label}
-                  </span>
-                  <strong>{entry.target}</strong>
-                  <span>{entry.reason}</span>
-                  <ArrowRight />
-                </Link>
-              ))}
-            </div>
-            {priority.available &&
-            urgent.priorityQueue.length === 0 &&
-            urgent.inventoryRisk.length === 0 ? (
-              <p className="empty-state dashboard-card-body">
-                No priority actions right now.
-              </p>
-            ) : null}
+            {actionEntries.length === 0 ? (
+              <ActionableEmptyState
+                href={isAdmin ? "/inventory?stock=low" : "/requests/new"}
+                label={
+                  isAdmin
+                    ? "No priority actions right now. Review low-stock items"
+                    : "No active blockers. Create a new request"
+                }
+              />
+            ) : (
+              <div className="dashboard-action-list dashboard-card-body">
+                {actionEntries.map((entry) => (
+                  <ActionQueueRow entry={entry} key={entry.key} />
+                ))}
+              </div>
+            )}
             <PanelFooter
+              analyticsName="action_queue_clicked"
               href={isAdmin ? "/requests?status=pending" : "/requests"}
+              label={isAdmin ? "Open request queue" : "View my requests"}
             />
           </section>
 
           <section
             className="panel dashboard-card"
-            data-testid="dashboard-recent-requests"
+            data-testid="dashboard-sla-aging"
           >
             <PanelHeading
-              title={isAdmin ? "Recent Requests" : "My Recent Requests"}
-              subtitle={
-                isAdmin
-                  ? "Latest inventory requests across the company."
-                  : "Latest requests for the current demo employee."
-              }
+              title={isAdmin ? "SLA & Aging" : "My Request Aging"}
+              subtitle="Review delays, fulfillment wait, and due-soon work."
             />
-            {dashboard.recentRequests.length === 0 ? (
-              <p className="empty-state">
-                {recent.available
-                  ? "No requests yet."
-                  : "Recent requests temporarily unavailable."}
-              </p>
+            {slaEntries.length === 0 ? (
+              <ActionableEmptyState
+                href="/requests?status=approved"
+                label="No aging risk right now. Check approved requests"
+              />
             ) : (
-              <div className="dashboard-risk-list dashboard-card-body">
-                {dashboard.recentRequests
-                  .slice(0, DASHBOARD_CARD_ITEM_LIMIT)
-                  .map((request) => (
-                    <Link
-                      className="dashboard-risk-row"
-                      href={`/requests/${request.id}`}
-                      key={request.id}
-                      title={`${request.requestCode} - ${request.itemNames}`}
-                    >
-                      <StatusBadge status={request.status} />
-                      <strong>{request.requestCode}</strong>
-                      <span>{request.requesterName}</span>
-                      <span>
-                        {request.quantityRequested} units · {request.itemNames}
-                      </span>
-                      <ArrowRight />
-                    </Link>
-                  ))}
+              <div className="dashboard-signal-list dashboard-card-body">
+                {slaEntries.map((entry) => (
+                  <DashboardSignalRow entry={entry} key={entry.key} />
+                ))}
               </div>
             )}
-            <PanelFooter href="/requests" />
+            <PanelFooter href="/requests" label="Review request aging" />
           </section>
 
-          <section
-            className="panel dashboard-card compact-quick-actions"
-            data-testid="dashboard-quick-actions"
-          >
+          {isAdmin ? (
+            <section className="panel dashboard-card">
+              <PanelHeading
+                title="Restock Recommendations"
+                subtitle="Items where active demand exceeds available stock."
+              />
+              {urgent.restockRecommendations.length === 0 ? (
+                <ActionableEmptyState
+                  href="/inventory?stock=low"
+                  label="No restock gaps right now. Review low-stock items"
+                />
+              ) : (
+                <div className="dashboard-signal-list dashboard-card-body">
+                  {urgent.restockRecommendations
+                    .slice(0, DASHBOARD_CARD_ITEM_LIMIT)
+                    .map((item) => (
+                      <Link
+                        className="dashboard-signal-row"
+                        data-analytics="restock_recommendation_clicked"
+                        href={`/inventory/${item.id}`}
+                        key={item.id}
+                        title={`${item.name} - ${item.sku}`}
+                      >
+                        <span className="badge badge-amber">Restock</span>
+                        <strong>{item.name}</strong>
+                        <span>
+                          Available {item.available} · demand{" "}
+                          {item.activeDemand}
+                        </span>
+                        <em>+{item.suggestedRestockQty}</em>
+                        <ArrowRight />
+                      </Link>
+                    ))}
+                </div>
+              )}
+              <PanelFooter href="/inventory?stock=low" label="Plan restock" />
+            </section>
+          ) : (
+            <section
+              className="panel dashboard-card"
+              data-testid="dashboard-recent-requests"
+            >
+              <PanelHeading
+                title="My Request Status"
+                subtitle="Recent requests and current progress."
+              />
+              <RecentRequestsList
+                available={recent.available}
+                requests={dashboard.recentRequests}
+              />
+              <PanelFooter href="/requests" label="Track all requests" />
+            </section>
+          )}
+
+          {isAdmin ? (
+            <section className="panel dashboard-card">
+              <PanelHeading
+                title="Cost-Saving Signals"
+                subtitle="Operational impact signals for stock and request cost."
+              />
+              <div className="dashboard-signal-list dashboard-card-body">
+                {businessValueEntries.map((entry) => (
+                  <DashboardSignalRow entry={entry} key={entry.key} />
+                ))}
+              </div>
+              <PanelFooter href="/inventory" label="Review inventory risk" />
+            </section>
+          ) : null}
+
+          {isAdmin ? (
+            <section
+              className="panel dashboard-card"
+              data-testid="dashboard-recent-requests"
+            >
+              <PanelHeading
+                title="Recent Requests"
+                subtitle="Latest inventory requests across the company."
+              />
+              <RecentRequestsList
+                available={recent.available}
+                requests={dashboard.recentRequests}
+              />
+              <PanelFooter href="/requests" label="Open request list" />
+            </section>
+          ) : null}
+
+          <section className="panel dashboard-card">
             <PanelHeading
               title="Quick Actions"
-              subtitle="Common shortcuts for this role."
+              subtitle={
+                isAdmin
+                  ? "Shortcuts that reduce manual operations time."
+                  : "Fast paths for requesting and reusing inventory."
+              }
             />
             <div className="quick-action-list dashboard-card-body">
               {isAdmin ? (
                 <>
                   <QuickAction
-                    href="/inventory/new"
-                    icon={<PlusCircle />}
-                    title="Add Inventory Item"
-                    description="Create a new stock record"
+                    href="/requests?status=approved"
+                    icon={<PackageCheck />}
+                    title="Fulfillment Queue"
+                    description={`${dashboard.requests.approvedRequests} approved requests`}
                     primary
                   />
                   <QuickAction
-                    href="/requests"
+                    href="/requests?status=pending"
                     icon={<ClipboardList />}
-                    title="Review Requests"
-                    description={`${dashboard.requests.pendingRequests} pending requests`}
-                  />
-                  <QuickAction
-                    href="/inventory"
-                    icon={<Package />}
-                    title="Browse Inventory"
-                    description="Check stock and low-stock items"
+                    title="Approval Queue"
+                    description={`${dashboard.requests.pendingRequests} pending reviews`}
                   />
                   <QuickAction
                     href="/inventory?stock=out"
                     icon={<AlertTriangle />}
                     title="Resolve Stockouts"
                     description={`${urgent.alerts.outOfStock} out-of-stock items`}
+                  />
+                  <QuickAction
+                    href="/inventory/new"
+                    icon={<PlusCircle />}
+                    title="Add Inventory Item"
+                    description="Create a new stock record"
                   />
                 </>
               ) : (
@@ -289,7 +361,7 @@ export default async function HomePage() {
                     href="/requests/new"
                     icon={<PlusCircle />}
                     title="Create Request"
-                    description="Ask for an inventory item"
+                    description="Ask for inventory in one step"
                     primary
                   />
                   <QuickAction
@@ -299,21 +371,24 @@ export default async function HomePage() {
                     description={`${dashboard.inventory.availableItems} available items`}
                   />
                   <QuickAction
-                    href="/requests"
-                    icon={<ClipboardList />}
-                    title="Track Requests"
-                    description={`${dashboard.requests.pendingRequests} pending requests`}
+                    href="/requests?status=approved"
+                    icon={<Clock />}
+                    title="Approved Requests"
+                    description={`${dashboard.requests.approvedRequests} waiting fulfillment`}
                   />
                   <QuickAction
                     href="/requests?status=fulfilled"
                     icon={<PackageCheck />}
-                    title="View Fulfilled Requests"
+                    title="Request Again"
                     description={`${dashboard.requests.fulfilledRequests} completed requests`}
                   />
                 </>
               )}
             </div>
-            <PanelFooter href={isAdmin ? "/inventory" : "/requests/new"} />
+            <PanelFooter
+              href={isAdmin ? "/requests?status=approved" : "/requests/new"}
+              label={isAdmin ? "Open fulfillment queue" : "Create request"}
+            />
           </section>
 
           <section className="panel dashboard-card">
@@ -370,6 +445,102 @@ function PanelHeading({
   );
 }
 
+function ActionQueueRow({ entry }: { entry: DashboardActionEntry }) {
+  return (
+    <Link
+      className="dashboard-action-row"
+      data-analytics="action_queue_clicked"
+      href={entry.href}
+      title={`${entry.entity} - ${entry.reason}`}
+    >
+      <span className={`badge ${dashboardBadgeClass(entry.priority)}`}>
+        {entry.priority}
+      </span>
+      <strong>{entry.entity}</strong>
+      <span>{entry.reason}</span>
+      <span>{entry.owner}</span>
+      <em>{entry.action}</em>
+      <ArrowRight />
+    </Link>
+  );
+}
+
+function DashboardSignalRow({ entry }: { entry: DashboardSignalEntry }) {
+  return (
+    <Link
+      className="dashboard-signal-row"
+      data-analytics="dashboard_card_clicked"
+      href={entry.href}
+      title={`${entry.title} - ${entry.reason}`}
+    >
+      <span className={`badge ${entry.badgeClass}`}>{entry.badge}</span>
+      <strong>{entry.title}</strong>
+      <span>{entry.reason}</span>
+      <em>{entry.value}</em>
+      <ArrowRight />
+    </Link>
+  );
+}
+
+function RecentRequestsList({
+  available,
+  requests,
+}: {
+  available: boolean;
+  requests: typeof emptyDashboardData.recentRequests;
+}) {
+  if (requests.length === 0) {
+    return (
+      <ActionableEmptyState
+        href="/requests/new"
+        label={
+          available
+            ? "No requests yet. Create the first request"
+            : "Recent requests temporarily unavailable. Open requests"
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="dashboard-action-list dashboard-card-body">
+      {requests.slice(0, DASHBOARD_CARD_ITEM_LIMIT).map((request) => (
+        <Link
+          className="dashboard-action-row"
+          data-analytics="dashboard_card_clicked"
+          href={`/requests/${request.id}`}
+          key={request.id}
+          title={`${request.requestCode} - ${request.itemNames}`}
+        >
+          <StatusBadge status={request.status} />
+          <strong>{request.requestCode}</strong>
+          <span>{request.requesterName}</span>
+          <span>
+            {request.quantityRequested} units · {request.itemNames}
+          </span>
+          <em>Open</em>
+          <ArrowRight />
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function ActionableEmptyState({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <Link className="dashboard-empty-action dashboard-card-body" href={href}>
+      <span>{label}</span>
+      <ArrowRight />
+    </Link>
+  );
+}
+
 function QuickAction({
   href,
   icon,
@@ -386,6 +557,7 @@ function QuickAction({
   return (
     <Link
       className={`quick-action-row ${primary ? "is-primary" : ""}`}
+      data-analytics="dashboard_card_clicked"
       href={href}
     >
       <span>{icon}</span>
@@ -400,28 +572,213 @@ function QuickAction({
 
 function PanelFooter({
   href,
+  analyticsName = "dashboard_card_clicked",
   label = "See more",
 }: {
+  analyticsName?: string;
   href: string;
   label?: string;
 }) {
   return (
-    <Link className="panel-footer-link" href={href}>
+    <Link className="panel-footer-link" data-analytics={analyticsName} href={href}>
       {label}
       <ArrowRight />
     </Link>
   );
 }
 
+type DashboardActionEntry = {
+  action: string;
+  entity: string;
+  href: string;
+  key: string;
+  owner: string;
+  priority: string;
+  reason: string;
+};
+
+type DashboardSignalEntry = {
+  badge: string;
+  badgeClass: string;
+  href: string;
+  key: string;
+  reason: string;
+  title: string;
+  value: string | number;
+};
+
+function buildActionEntries(urgent: typeof emptyUrgentData) {
+  const requestEntries = urgent.priorityQueue.map((request) => ({
+    action: actionForRisk(request.risk),
+    entity: request.requestCode,
+    href: `/requests/${request.id}`,
+    key: `request:${request.id}`,
+    owner: request.requesterName,
+    priority: request.risk,
+    reason: `${request.department} · ${request.totalQuantity} units`,
+  }));
+
+  const inventoryEntries = urgent.inventoryRisk.map((item) => ({
+    action: "Review stock",
+    entity: item.name,
+    href: `/inventory/${item.id}`,
+    key: `inventory-risk:${item.id}`,
+    owner: item.status,
+    priority: item.status,
+    reason: `${item.pendingDemand} units in active demand`,
+  }));
+
+  const restockEntries = urgent.restockRecommendations.map((item) => ({
+    action: "Restock",
+    entity: item.name,
+    href: `/inventory/${item.id}`,
+    key: `restock:${item.id}`,
+    owner: item.warehouse,
+    priority: "Restock",
+    reason: `Need ${item.suggestedRestockQty} more units`,
+  }));
+
+  return [...requestEntries, ...inventoryEntries, ...restockEntries];
+}
+
+function buildSlaEntries(
+  requests: typeof emptyDashboardData.requests,
+  alerts: typeof emptyUrgentData.alerts,
+): DashboardSignalEntry[] {
+  return [
+    {
+      badge: "Review",
+      badgeClass: "badge-amber",
+      href: "/requests?status=pending",
+      key: "pending-review",
+      reason: "Requests waiting for admin decision",
+      title: "Pending review",
+      value: requests.pendingRequests,
+    },
+    {
+      badge: "Fulfill",
+      badgeClass: "badge-blue",
+      href: "/requests?status=approved",
+      key: "approved-waiting",
+      reason: "Approved requests waiting for issue",
+      title: "Approved waiting",
+      value: alerts.approvedWaiting,
+    },
+    {
+      badge: "Blocked",
+      badgeClass: "badge-red",
+      href: "/requests?status=approved",
+      key: "blocked-fulfillment",
+      reason: "Approved requests with insufficient stock",
+      title: "Blocked fulfillment",
+      value: requests.blockedFulfillment,
+    },
+    {
+      badge: "SLA",
+      badgeClass: "badge-red",
+      href: "/requests",
+      key: "over-sla",
+      reason: "Open requests past required date",
+      title: "Requests over SLA",
+      value: requests.overSla,
+    },
+    {
+      badge: "Soon",
+      badgeClass: "badge-amber",
+      href: "/requests",
+      key: "due-soon",
+      reason: "Open requests due in the next 3 days",
+      title: "Due soon",
+      value: requests.dueSoon,
+    },
+  ];
+}
+
+function buildBusinessValueEntries(
+  urgent: typeof emptyUrgentData,
+): DashboardSignalEntry[] {
+  return [
+    {
+      badge: "Demand",
+      badgeClass: "badge-red",
+      href: "/inventory?stock=out",
+      key: "stockout-demand",
+      reason: "Stockouts with active request demand",
+      title: "Stockout with demand",
+      value: urgent.alerts.outOfStock,
+    },
+    {
+      badge: "Warning",
+      badgeClass: "badge-amber",
+      href: "/inventory?stock=low",
+      key: "low-stock-demand",
+      reason: "Low-stock items that already have active demand",
+      title: "Low stock pressure",
+      value: urgent.alerts.lowStock,
+    },
+    {
+      badge: "Prepared",
+      badgeClass: "badge-blue",
+      href: "/inventory",
+      key: "overstock-risk",
+      reason: "Monitor high stock with low request activity",
+      title: "Overstock risk signal",
+      value: "Ready",
+    },
+    {
+      badge: "Prepared",
+      badgeClass: "badge-blue",
+      href: "/requests",
+      key: "duplicate-request-risk",
+      reason: "Use request history to spot repeated asks",
+      title: "Duplicate request signal",
+      value: "Ready",
+    },
+  ];
+}
+
+function actionForRisk(risk: string) {
+  const normalized = risk.toLowerCase();
+  if (normalized.includes("blocked") || normalized.includes("out")) {
+    return "Resolve stock";
+  }
+  if (normalized.includes("ready")) {
+    return "Fulfill";
+  }
+  if (normalized.includes("overdue") || normalized.includes("pending")) {
+    return "Review";
+  }
+  if (normalized.includes("restock")) {
+    return "Restock";
+  }
+  return "Open";
+}
+
+function calculateSlaCompliance(openRequests: number, overSla: number) {
+  if (openRequests <= 0) {
+    return 100;
+  }
+
+  return Math.max(
+    0,
+    Math.min(100, Math.round(((openRequests - overSla) / openRequests) * 100)),
+  );
+}
+
 function dashboardBadgeClass(label: string) {
   const normalized = label.toLowerCase();
-  if (normalized.includes("out") || normalized.includes("overdue")) {
+  if (
+    normalized.includes("blocked") ||
+    normalized.includes("out") ||
+    normalized.includes("overdue")
+  ) {
     return "badge-red";
   }
   if (
     normalized.includes("low") ||
     normalized.includes("soon") ||
-    normalized.includes("pending")
+    normalized.includes("pending") ||
+    normalized.includes("restock")
   ) {
     return "badge-amber";
   }
@@ -465,7 +822,12 @@ const emptyDashboardData = {
     status: "pending" | "approved" | "rejected" | "fulfilled";
   }>,
   requests: {
+    approvedRequests: 0,
+    blockedFulfillment: 0,
+    dueSoon: 0,
     fulfilledRequests: 0,
+    fulfilledThisWeek: 0,
+    overSla: 0,
     pendingRequests: 0,
     totalRequests: 0,
   },
@@ -473,6 +835,8 @@ const emptyDashboardData = {
 
 const emptyUrgentData = {
   alerts: {
+    approvedWaiting: 0,
+    blockedFulfillment: 0,
     highPriorityPending: 0,
     lowStock: 0,
     outOfStock: 0,
@@ -489,15 +853,28 @@ const emptyUrgentData = {
   priorityQueue: [] as Array<{
     department: string;
     id: string;
+    priority: "low" | "normal" | "high";
     requestCode: string;
     requesterName: string;
     risk: string;
+    shortLines: number;
+    status: "pending" | "approved" | "rejected" | "fulfilled";
+    totalQuantity: number;
   }>,
   recentActivity: [] as Array<{
     action: string;
     createdAt: Date | string;
     id: string;
     requestCode: string | null;
+  }>,
+  restockRecommendations: [] as Array<{
+    activeDemand: number;
+    available: number;
+    id: string;
+    name: string;
+    sku: string;
+    suggestedRestockQty: number;
+    warehouse: string;
   }>,
 };
 
