@@ -3,12 +3,12 @@ import type { RequestStatus } from "@/lib/constants";
 export function StatusBadge({ status }: { status: RequestStatus }) {
   const tone =
     status === "fulfilled"
-      ? "badge-green"
+      ? "badge-status-fulfilled"
       : status === "approved"
-        ? "badge-blue"
+        ? "badge-status-approved"
         : status === "rejected"
-          ? "badge-red"
-          : "badge-amber";
+          ? "badge-status-rejected"
+          : "badge-status-pending";
 
   return <span className={`badge ${tone}`}>{capitalize(status)}</span>;
 }

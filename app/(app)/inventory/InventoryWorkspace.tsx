@@ -6,6 +6,7 @@ import { ClickableRow } from "@/components/ui/ClickableRow";
 import { DataTable } from "@/components/ui/DataTable";
 import { DataToolbar } from "@/components/ui/DataToolbar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SortHeader, sortAria } from "@/components/ui/SortHeader";
 import { StockBadge } from "@/components/ui/StockBadge";
 import type { User } from "@/db/schema";
 import { stockStatusFromQuantities } from "@/lib/inventory";
@@ -16,12 +17,23 @@ export type InventoryWorkspaceSearchParams = {
   category?: string;
   page?: string;
   q?: string;
+  dir?: string;
+  sort?: string;
   stock?: string;
   success?: string;
 };
 
 const pageSize = 25;
 const stockFilters = ["in", "low", "out"] as const;
+const inventorySortKeys = [
+  "name",
+  "sku",
+  "category",
+  "available",
+  "threshold",
+  "status",
+] as const;
+const sortDirections = ["asc", "desc"] as const;
 
 export async function InventoryWorkspace({
   currentUser,
@@ -45,11 +57,23 @@ export async function InventoryWorkspace({
       ? (searchParams.stock as (typeof stockFilters)[number])
       : "";
   const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+  const selectedSort = inventorySortKeys.includes(
+    searchParams.sort as (typeof inventorySortKeys)[number],
+  )
+    ? (searchParams.sort as (typeof inventorySortKeys)[number])
+    : "name";
+  const selectedDir = sortDirections.includes(
+    searchParams.dir as (typeof sortDirections)[number],
+  )
+    ? (searchParams.dir as (typeof sortDirections)[number])
+    : "asc";
   const itemResult = await listItems({
     category: selectedCategory,
+    dir: selectedDir,
     page: currentPage,
     pageSize,
     q: query,
+    sort: selectedSort,
     stock: selectedStock,
   });
   const categories = itemResult.categories;
@@ -132,7 +156,7 @@ export async function InventoryWorkspace({
                 <button className="button button-secondary" type="submit">
                   Filter
                 </button>
-                {query || selectedCategory || selectedStock ? (
+                {query || selectedCategory || selectedStock || searchParams.sort ? (
                   <Link className="clear-filter-link" href="/inventory">
                     Clear filters
                   </Link>
@@ -159,16 +183,122 @@ export async function InventoryWorkspace({
               <DataTable className="inventory-table">
                 <thead>
                   <tr>
-                    <th className="col-item">Item</th>
-                    {isAdmin ? <th className="col-code hide-md">SKU</th> : null}
-                    <th className="col-category">Category</th>
-                    <th className="col-number">Available</th>
+                    <th
+                      aria-sort={sortAria("name", selectedSort, selectedDir)}
+                      className="col-item"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/inventory"
+                        label="Item"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          stock: selectedStock,
+                        }}
+                        sortKey="name"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria("sku", selectedSort, selectedDir)}
+                      className="col-code col-sku"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/inventory"
+                        label="SKU"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          stock: selectedStock,
+                        }}
+                        sortKey="sku"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria(
+                        "category",
+                        selectedSort,
+                        selectedDir,
+                      )}
+                      className="col-category hide-sm"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/inventory"
+                        label="Category"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          stock: selectedStock,
+                        }}
+                        sortKey="category"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria(
+                        "available",
+                        selectedSort,
+                        selectedDir,
+                      )}
+                      className="col-number"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/inventory"
+                        label="Available"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          stock: selectedStock,
+                        }}
+                        sortKey="available"
+                      />
+                    </th>
                     {isAdmin ? (
-                      <th className="col-number hide-md">
-                        Low-stock threshold
+                      <th
+                        aria-sort={sortAria(
+                          "threshold",
+                          selectedSort,
+                          selectedDir,
+                        )}
+                        className="col-number hide-md"
+                      >
+                        <SortHeader
+                          activeDir={selectedDir}
+                          activeSort={selectedSort}
+                          basePath="/inventory"
+                          label="Threshold"
+                          params={{
+                            category: selectedCategory,
+                            q: query,
+                            stock: selectedStock,
+                          }}
+                          sortKey="threshold"
+                        />
                       </th>
                     ) : null}
-                    <th className="col-status">Status</th>
+                    <th
+                      aria-sort={sortAria("status", selectedSort, selectedDir)}
+                      className="col-status"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/inventory"
+                        label="Status"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          stock: selectedStock,
+                        }}
+                        sortKey="status"
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -191,24 +321,27 @@ export async function InventoryWorkspace({
                         key={item.id}
                         selected={selectedItemId === item.id}
                       >
-                        <td className="truncate-cell" title={item.name}>
+                        <td className="item-primary-cell" title={item.name}>
                           <strong>{item.name}</strong>
-                          {!isAdmin ? (
-                            <span className="muted"> {item.sku}</span>
-                          ) : null}
+                          <span className="cell-subtext">
+                            {item.category} · {item.warehouse}
+                          </span>
                         </td>
-                        {isAdmin ? (
-                          <td
-                            className="mono-cell truncate-cell hide-md"
-                            title={item.sku}
-                          >
-                            {item.sku}
-                          </td>
-                        ) : null}
-                        <td className="truncate-cell" title={item.category}>
+                        <td className="mono-cell sku-cell" title={item.sku}>
+                          {item.sku}
+                        </td>
+                        <td
+                          className="truncate-cell hide-sm"
+                          title={item.category}
+                        >
                           {item.category}
                         </td>
-                        <td className="numeric-cell">{item.available}</td>
+                        <td className="inventory-quantity-cell">
+                          <strong>{item.available}</strong>
+                          <span className="cell-subtext">
+                            {item.unit} · min {item.reorderPoint}
+                          </span>
+                        </td>
                         {isAdmin ? (
                           <td className="numeric-cell hide-md">
                             {item.reorderPoint}
@@ -230,7 +363,9 @@ export async function InventoryWorkspace({
                 pageCount={itemResult.pageCount}
                 searchParams={{
                   category: selectedCategory,
+                  dir: selectedDir,
                   q: query,
+                  sort: selectedSort,
                   stock: selectedStock,
                 }}
               />

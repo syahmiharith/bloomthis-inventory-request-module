@@ -276,6 +276,12 @@ export default async function HomePage() {
                     title="Browse Inventory"
                     description="Check stock and low-stock items"
                   />
+                  <QuickAction
+                    href="/inventory?stock=out"
+                    icon={<AlertTriangle />}
+                    title="Resolve Stockouts"
+                    description={`${urgent.alerts.outOfStock} out-of-stock items`}
+                  />
                 </>
               ) : (
                 <>
@@ -297,6 +303,12 @@ export default async function HomePage() {
                     icon={<ClipboardList />}
                     title="Track Requests"
                     description={`${dashboard.requests.pendingRequests} pending requests`}
+                  />
+                  <QuickAction
+                    href="/requests?status=fulfilled"
+                    icon={<PackageCheck />}
+                    title="View Fulfilled Requests"
+                    description={`${dashboard.requests.fulfilledRequests} completed requests`}
                   />
                 </>
               )}

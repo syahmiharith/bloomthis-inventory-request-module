@@ -3,10 +3,10 @@ import type { StockStatus } from "@/lib/inventory";
 export function StockBadge({ status }: { status: StockStatus }) {
   const tone =
     status === "Out of Stock"
-      ? "badge-red"
+      ? "badge-stock-out"
       : status === "Low Stock"
-        ? "badge-amber"
-        : "badge-green";
+        ? "badge-stock-low"
+        : "badge-stock-in";
 
   return <span className={`badge ${tone}`}>{status}</span>;
 }

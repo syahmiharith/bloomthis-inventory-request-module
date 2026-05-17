@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQLWrapper } from "drizzle-orm";
 import { db } from "@/db";
 import {
   inventoryItems,
@@ -20,12 +20,24 @@ import {
 } from "@/lib/validations";
 import { createAuditLog } from "./audit.service";
 
+type RequestSortKey =
+  | "request"
+  | "requester"
+  | "items"
+  | "quantity"
+  | "status"
+  | "stock"
+  | "created";
+type SortDirection = "asc" | "desc";
+
 export async function listRequests(
   filters: {
     category?: string;
+    dir?: SortDirection;
     page?: number;
     pageSize?: number;
     q?: string;
+    sort?: RequestSortKey;
     status?: RequestStatus;
   },
   viewer?: User,
@@ -39,6 +51,8 @@ export async function listRequests(
       normalizePage(filters.page),
       normalizePageSize(filters.pageSize),
       filters.q?.trim() ?? "",
+      filters.sort ?? "created",
+      filters.dir ?? "desc",
     ),
   );
 }
@@ -51,6 +65,8 @@ async function listRequestsCached(
   page: number,
   pageSize: number,
   query: string,
+  sort: RequestSortKey,
+  dir: SortDirection,
 ) {
   return cachedRead(
     () =>
@@ -62,6 +78,8 @@ async function listRequestsCached(
         page,
         pageSize,
         query,
+        sort,
+        dir,
       ),
     [
       "request-list",
@@ -72,6 +90,8 @@ async function listRequestsCached(
       String(page),
       String(pageSize),
       query,
+      sort,
+      dir,
     ],
     { tags: [CACHE_TAGS.requestList] },
   )();
@@ -85,6 +105,8 @@ async function listRequestsRaw(
   page: number,
   pageSize: number,
   query: string,
+  sort: RequestSortKey,
+  dir: SortDirection,
 ) {
   const conditions = [];
   if (status) {
@@ -123,6 +145,22 @@ async function listRequestsRaw(
     );
   }
   const whereClause = conditions.length ? and(...conditions) : undefined;
+  const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
+  const totalQuantity = sql<number>`coalesce(sum(${inventoryRequestItems.quantityRequested}), 0)::int`;
+  const firstItemName = sql<string>`min(${inventoryItems.name})`;
+  const shortLineCount = sql<number>`coalesce(sum(case when ${available} < ${inventoryRequestItems.quantityRequested} then 1 else 0 end), 0)::int`;
+  const statusRank = sql<number>`case
+    when ${inventoryRequests.status} = 'pending' then 0
+    when ${inventoryRequests.status} = 'approved' then 1
+    when ${inventoryRequests.status} = 'fulfilled' then 2
+    else 3
+  end`;
+  const stockReadinessRank = sql<number>`case
+    when ${inventoryRequests.status} = 'fulfilled' then 2
+    when ${inventoryRequests.status} = 'rejected' then 3
+    when ${shortLineCount} > 0 then 0
+    else 1
+  end`;
 
   const [totalRow] = await db
     .select({ totalCount: sql<number>`count(*)::int` })
@@ -148,11 +186,31 @@ async function listRequestsRaw(
       approverId: inventoryRequests.approverId,
       adminComment: inventoryRequests.adminComment,
       createdAt: inventoryRequests.createdAt,
+      firstItemName,
+      totalQuantity,
     })
     .from(inventoryRequests)
     .innerJoin(users, eq(inventoryRequests.requesterId, users.id))
+    .leftJoin(
+      inventoryRequestItems,
+      eq(inventoryRequestItems.requestId, inventoryRequests.id),
+    )
+    .leftJoin(
+      inventoryItems,
+      eq(inventoryRequestItems.itemId, inventoryItems.id),
+    )
     .where(whereClause)
-    .orderBy(desc(inventoryRequests.createdAt))
+    .groupBy(inventoryRequests.id, users.id, users.name)
+    .orderBy(
+      ...getRequestOrderBy(
+        sort,
+        dir,
+        totalQuantity,
+        firstItemName,
+        statusRank,
+        stockReadinessRank,
+      ),
+    )
     .limit(pageSize)
     .offset((safePage - 1) * pageSize);
   const requestIds = requests.map((request) => request.id);
@@ -174,6 +232,39 @@ async function listRequestsRaw(
     })),
     totalCount,
   };
+}
+
+function getRequestOrderBy(
+  sort: RequestSortKey,
+  dir: SortDirection,
+  totalQuantity: SQLWrapper,
+  firstItemName: SQLWrapper,
+  statusRank: SQLWrapper,
+  stockReadinessRank: SQLWrapper,
+) {
+  const byDirection = (expression: SQLWrapper) =>
+    dir === "desc" ? desc(expression) : asc(expression);
+
+  const primary =
+    sort === "request"
+      ? inventoryRequests.requestCode
+      : sort === "requester"
+        ? users.name
+        : sort === "items"
+          ? firstItemName
+          : sort === "quantity"
+            ? totalQuantity
+            : sort === "status"
+              ? statusRank
+              : sort === "stock"
+                ? stockReadinessRank
+                : inventoryRequests.createdAt;
+
+  return [
+    byDirection(primary),
+    desc(inventoryRequests.createdAt),
+    asc(inventoryRequests.requestCode),
+  ];
 }
 
 export async function getRequestById(id: string, viewer?: User) {

@@ -1,4 +1,13 @@
-import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  lte,
+  sql,
+  type SQLWrapper,
+} from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db";
 import {
@@ -20,6 +29,14 @@ import { createItemSchema } from "@/lib/validations";
 import { createAuditLog } from "./audit.service";
 
 type ItemStockFilter = "in" | "low" | "out";
+type ItemSortKey =
+  | "name"
+  | "sku"
+  | "category"
+  | "available"
+  | "threshold"
+  | "status";
+type SortDirection = "asc" | "desc";
 
 export type ListItemsResult = Awaited<ReturnType<typeof listItemsCached>>;
 export type RequestableItemRow = {
@@ -36,6 +53,8 @@ export async function listItems(filters: {
   page?: number;
   pageSize?: number;
   q?: string;
+  dir?: SortDirection;
+  sort?: ItemSortKey;
   stock?: ItemStockFilter | "";
 }) {
   return withDevTiming("listItems", () =>
@@ -46,6 +65,8 @@ export async function listItems(filters: {
       normalizePageSize(filters.pageSize),
       filters.q?.trim() ?? "",
       filters.stock ?? "",
+      filters.sort ?? "name",
+      filters.dir ?? "asc",
     ),
   );
 }
@@ -57,9 +78,12 @@ async function listItemsCached(
   pageSize: number,
   query: string,
   stock: ItemStockFilter | "",
+  sort: ItemSortKey,
+  dir: SortDirection,
 ) {
   return cachedRead(
-    () => listItemsRaw(category, lowStock, page, pageSize, query, stock),
+    () =>
+      listItemsRaw(category, lowStock, page, pageSize, query, stock, sort, dir),
     [
       "inventory-list",
       category,
@@ -68,6 +92,8 @@ async function listItemsCached(
       String(pageSize),
       query,
       stock,
+      sort,
+      dir,
     ],
     { tags: [CACHE_TAGS.inventoryList] },
   )();
@@ -80,8 +106,15 @@ async function listItemsRaw(
   pageSize: number,
   query: string,
   stock: ItemStockFilter | "",
+  sort: ItemSortKey,
+  dir: SortDirection,
 ) {
   const available = sql<number>`${inventoryItems.quantityOnHand} - ${inventoryItems.quantityReserved}`;
+  const stockRank = sql<number>`case
+    when ${available} <= 0 then 0
+    when ${available} <= ${inventoryItems.reorderPoint} then 1
+    else 2
+  end`;
   const conditions = [];
   if (category) {
     conditions.push(eq(inventoryItems.category, category));
@@ -134,7 +167,7 @@ async function listItemsRaw(
       })
       .from(inventoryItems)
       .where(whereClause)
-      .orderBy(asc(inventoryItems.name))
+      .orderBy(...getItemOrderBy(sort, dir, available, stockRank))
       .limit(pageSize)
       .offset((safePage - 1) * pageSize),
     listItemCategories(),
@@ -156,6 +189,35 @@ async function listItemsRaw(
     })),
     totalCount,
   };
+}
+
+function getItemOrderBy(
+  sort: ItemSortKey,
+  dir: SortDirection,
+  available: SQLWrapper,
+  stockRank: SQLWrapper,
+) {
+  const byDirection = (expression: SQLWrapper) =>
+    dir === "desc" ? desc(expression) : asc(expression);
+
+  const primary =
+    sort === "sku"
+      ? inventoryItems.sku
+      : sort === "category"
+        ? inventoryItems.category
+        : sort === "available"
+          ? available
+          : sort === "threshold"
+            ? inventoryItems.reorderPoint
+            : sort === "status"
+              ? stockRank
+              : inventoryItems.name;
+
+  return [
+    byDirection(primary),
+    asc(inventoryItems.name),
+    asc(inventoryItems.id),
+  ];
 }
 
 export async function listItemCategories() {

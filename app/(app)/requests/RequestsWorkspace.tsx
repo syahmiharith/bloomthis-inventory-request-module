@@ -6,6 +6,7 @@ import { ClickableRow } from "@/components/ui/ClickableRow";
 import { DataTable } from "@/components/ui/DataTable";
 import { DataToolbar } from "@/components/ui/DataToolbar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SortHeader, sortAria } from "@/components/ui/SortHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { User } from "@/db/schema";
 import type { RequestStatus } from "@/lib/constants";
@@ -14,9 +15,11 @@ import { RequestCreateModalButton } from "./RequestCreateModalButton";
 
 export type RequestWorkspaceSearchParams = {
   category?: string;
+  dir?: string;
   error?: string;
   page?: string;
   q?: string;
+  sort?: string;
   status?: string;
   success?: string;
 };
@@ -28,6 +31,16 @@ const requestStatuses: RequestStatus[] = [
   "fulfilled",
 ];
 const pageSize = 25;
+const requestSortKeys = [
+  "request",
+  "requester",
+  "items",
+  "quantity",
+  "status",
+  "stock",
+  "created",
+] as const;
+const sortDirections = ["asc", "desc"] as const;
 type RequestRow = Awaited<ReturnType<typeof listRequests>>["rows"][number];
 type RequestItemRow = RequestRow["items"][number];
 
@@ -51,15 +64,27 @@ export async function RequestsWorkspace({
   )
     ? (searchParams.status as RequestStatus)
     : undefined;
-  const query = searchParams.q?.trim().toLowerCase() ?? "";
+  const query = searchParams.q?.trim() ?? "";
   const selectedCategory = searchParams.category?.trim() ?? "";
   const currentPage = Math.max(1, Number(searchParams.page ?? "1") || 1);
+  const selectedSort = requestSortKeys.includes(
+    searchParams.sort as (typeof requestSortKeys)[number],
+  )
+    ? (searchParams.sort as (typeof requestSortKeys)[number])
+    : "created";
+  const selectedDir = sortDirections.includes(
+    searchParams.dir as (typeof sortDirections)[number],
+  )
+    ? (searchParams.dir as (typeof sortDirections)[number])
+    : "desc";
   const requestResult = await listRequests(
     {
       category: selectedCategory,
+      dir: selectedDir,
       page: currentPage,
       pageSize,
       q: query,
+      sort: selectedSort,
       status: selectedStatus,
     },
     currentUser,
@@ -160,7 +185,7 @@ export async function RequestsWorkspace({
                 <button className="button button-secondary" type="submit">
                   Filter
                 </button>
-                {query || selectedStatus || selectedCategory ? (
+                {query || selectedStatus || selectedCategory || searchParams.sort ? (
                   <Link className="clear-filter-link" href="/requests">
                     Clear filters
                   </Link>
@@ -195,15 +220,137 @@ export async function RequestsWorkspace({
               <DataTable className="requests-table">
                 <thead>
                   <tr>
-                    <th className="col-code">Request</th>
-                    {isAdmin ? <th className="col-person">Requester</th> : null}
-                    <th className="col-items">Items</th>
-                    <th className="col-number">Quantity</th>
-                    <th className="col-status">Status</th>
-                    {isAdmin ? (
-                      <th className="col-stock hide-md">Stock</th>
-                    ) : null}
-                    <th className="col-date hide-md">Created</th>
+                    <th
+                      aria-sort={sortAria(
+                        "request",
+                        selectedSort,
+                        selectedDir,
+                      )}
+                      className="col-code"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Request"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="request"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria(
+                        "requester",
+                        selectedSort,
+                        selectedDir,
+                      )}
+                      className="col-person"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Requester"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="requester"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria("items", selectedSort, selectedDir)}
+                      className="col-items"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Items"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="items"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria(
+                        "quantity",
+                        selectedSort,
+                        selectedDir,
+                      )}
+                      className="col-number"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Qty"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="quantity"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria("status", selectedSort, selectedDir)}
+                      className="col-status"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Status"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="status"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria("stock", selectedSort, selectedDir)}
+                      className="col-stock hide-md"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Stock"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="stock"
+                      />
+                    </th>
+                    <th
+                      aria-sort={sortAria("created", selectedSort, selectedDir)}
+                      className="col-date hide-md"
+                    >
+                      <SortHeader
+                        activeDir={selectedDir}
+                        activeSort={selectedSort}
+                        basePath="/requests"
+                        label="Created"
+                        params={{
+                          category: selectedCategory,
+                          q: query,
+                          status: selectedStatus ?? "",
+                        }}
+                        sortKey="created"
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,45 +365,34 @@ export async function RequestsWorkspace({
                         key={request.id}
                         selected={selectedRequestId === request.id}
                       >
-                        <td
-                          className="mono-cell truncate-cell"
-                          title={request.requestCode}
-                        >
-                          {request.requestCode}
+                        <td className="request-code-cell">
+                          <strong className="mono-cell">
+                            {request.requestCode}
+                          </strong>
+                          <span className="cell-subtext">
+                            {capitalize(request.priority)} ·{" "}
+                            {formatDate(request.createdAt)}
+                          </span>
                         </td>
-                        {isAdmin ? (
-                          <td
-                            className="truncate-cell"
-                            title={request.requesterName}
-                          >
-                            <RequesterCell
-                              department={request.department}
-                              name={request.requesterName}
-                            />
-                          </td>
-                        ) : null}
-                        <td
-                          className="truncate-cell"
-                          title={request.items
-                            .map((item) => item.itemName)
-                            .join(", ")}
-                        >
-                          {request.items
-                            .map((item) => item.itemName)
-                            .join(", ")}
+                        <td title={request.requesterName}>
+                          <RequesterCell
+                            department={request.department}
+                            name={request.requesterName}
+                          />
+                        </td>
+                        <td title={formatItemTitle(request.items)}>
+                          <RequestItemChips items={request.items} />
                         </td>
                         <td className="numeric-cell">{totalQuantity}</td>
                         <td>
                           <StatusBadge status={request.status} />
                         </td>
-                        {isAdmin ? (
-                          <td className="hide-md">
-                            <StockSummary
-                              items={request.items}
-                              status={request.status}
-                            />
-                          </td>
-                        ) : null}
+                        <td className="hide-md">
+                          <StockSummary
+                            items={request.items}
+                            status={request.status}
+                          />
+                        </td>
                         <td className="hide-md">
                           {formatDate(request.createdAt)}
                         </td>
@@ -273,7 +409,9 @@ export async function RequestsWorkspace({
                 pageCount={requestResult.pageCount}
                 searchParams={{
                   category: selectedCategory,
+                  dir: selectedDir,
                   q: query,
+                  sort: selectedSort,
                   status: selectedStatus ?? "",
                 }}
               />
@@ -343,15 +481,15 @@ function StockSummary({
   status: RequestStatus;
 }) {
   if (status === "fulfilled") {
-    return <span className="badge badge-green">Issued</span>;
+    return <span className="badge badge-stock-issued">Issued</span>;
   }
 
   if (status === "rejected") {
-    return <span className="badge badge-neutral">Closed</span>;
+    return <span className="badge badge-stock-closed">Closed</span>;
   }
 
   if (items.length === 0) {
-    return <span className="badge badge-neutral">No items</span>;
+    return <span className="badge badge-stock-closed">No items</span>;
   }
 
   const shortItems = items.filter(
@@ -359,18 +497,53 @@ function StockSummary({
   );
 
   if (shortItems.length === 0) {
-    return <span className="badge badge-green">Enough stock</span>;
+    return <span className="badge badge-stock-ready">Enough stock</span>;
   }
 
   if (shortItems.length === items.length) {
-    return <span className="badge badge-red">Insufficient stock</span>;
+    return (
+      <span className="badge badge-stock-insufficient">
+        Insufficient stock
+      </span>
+    );
   }
 
   return (
-    <span className="badge badge-amber">
+    <span className="badge badge-stock-partial">
       {shortItems.length} item{shortItems.length === 1 ? "" : "s"} short
     </span>
   );
+}
+
+function RequestItemChips({ items }: { items: RequestItemRow[] }) {
+  const visibleItems = items.slice(0, 2);
+  const hiddenCount = Math.max(0, items.length - visibleItems.length);
+
+  if (items.length === 0) {
+    return <span className="muted">No items</span>;
+  }
+
+  return (
+    <span className="item-chip-list">
+      {visibleItems.map((item) => (
+        <span className="item-chip" key={item.id}>
+          <span>{item.itemName}</span>
+          <small>
+            {item.requestedQuantity} {item.unit}
+          </small>
+        </span>
+      ))}
+      {hiddenCount > 0 ? (
+        <span className="item-chip-more">+{hiddenCount} more</span>
+      ) : null}
+    </span>
+  );
+}
+
+function formatItemTitle(items: RequestItemRow[]) {
+  return items
+    .map((item) => `${item.itemName} (${item.requestedQuantity} ${item.unit})`)
+    .join(", ");
 }
 
 function RequesterCell({
