@@ -1,7 +1,7 @@
-# BloomThis Internal Tool - Inventory Request Module
+# Inventory Requests
 
-Full-stack internal inventory request module built with Next.js, TypeScript,
-Drizzle ORM, and Supabase PostgreSQL.
+Full-stack inventory request demo built with Next.js, TypeScript,
+Drizzle ORM, and Supabase PostgreSQL for the BloomThis technical assessment.
 
 The application models a practical operations workflow: employees request
 inventory, admins review and approve requests, and approved requests are
@@ -426,6 +426,19 @@ Run focused suites:
 npm run test:unit
 npm run test:component
 npm run test:integration
+```
+
+The [fulfillment integration tests](tests/integration/fulfill-request.test.ts) use
+real PostgreSQL row locks to force overlapping fulfillment attempts. They cover
+competing requests (including reserved stock), duplicate fulfillment, rollback,
+and exactly-once audit/history records. No database mocks are used. Run them
+against a **disposable local test database** with migrations applied; the suite
+truncates its tables. Do not run another test process against that database;
+`vitest.config.ts` disables file/test parallelism within this suite. The test role must be able to inspect its own sessions in
+`pg_stat_activity`, and the connection pool needs four connections (the default).
+
+```bash
+npx vitest run tests/integration/fulfill-request.test.ts
 ```
 
 Run Playwright E2E tests:

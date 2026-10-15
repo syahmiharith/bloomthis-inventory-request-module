@@ -1,8 +1,6 @@
 name: Vercel Preview
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
